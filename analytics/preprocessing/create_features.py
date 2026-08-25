@@ -6,11 +6,13 @@ OUTPUT_FILE = "data/processed/tomato_forecasting_features.csv"
 
 def create_features():
 
+    # Load cleaned dataset
     df = pd.read_csv(INPUT_FILE)
 
+    # Convert date
     df["Arrival Date"] = pd.to_datetime(df["Arrival Date"])
 
-    # Keep forecasting-related columns
+    # Select required columns
     forecast_df = df[
         [
             "Arrival Date",
@@ -22,7 +24,7 @@ def create_features():
         ]
     ].copy()
 
-    # Sort by market and date
+    # Sort observations by market and date
     forecast_df = forecast_df.sort_values(
         ["Market", "Arrival Date"]
     ).reset_index(drop=True)
@@ -47,7 +49,7 @@ def create_features():
         .astype(int)
     )
 
-    # Previous observations for each market
+    # Historical price features
     forecast_df["price_lag_1"] = (
         forecast_df
         .groupby("Market")["Modal Price Per Kg"]
@@ -66,7 +68,7 @@ def create_features():
         .shift(14)
     )
 
-    # Rolling price averages
+    # Rolling price features
     forecast_df["rolling_price_7"] = (
         forecast_df
         .groupby("Market")["Modal Price Per Kg"]
@@ -89,10 +91,10 @@ def create_features():
         )
     )
 
-    # Remove rows without sufficient historical observations
+    # Remove rows without enough historical observations
     forecast_df = forecast_df.dropna().reset_index(drop=True)
 
-    # Save
+    # Save final ML-ready dataset
     forecast_df.to_csv(
         OUTPUT_FILE,
         index=False
