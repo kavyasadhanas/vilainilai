@@ -1,0 +1,14 @@
+{
+    "model": "Hybrid XGBoost",
+    "target": "Modal Price Per Kg",
+    "method": "Previous Price + XGBoost Predicted Correction",
+    "training_rows": 31048,
+    "testing_rows": 10062,
+    "baseline_mae": 1.3117,
+    "baseline_rmse": 2.4253,
+    "baseline_mape": 6.5622,
+    "hybrid_mae": 1.8726,
+    "hybrid_rmse": 2.4843,
+    "hybrid_mape": 9.9284,
+    "hybrid_r2": 0.6447
+}
