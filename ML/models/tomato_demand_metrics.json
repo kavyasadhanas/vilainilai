@@ -1,0 +1,16 @@
+{
+    "model": "XGBoost Classifier",
+    "task": "Demand direction classification",
+    "target": "Arrival-based demand direction proxy",
+    "training_rows": 30883,
+    "testing_rows": 10041,
+    "accuracy": 0.741,
+    "precision": 0.7052,
+    "recall": 0.741,
+    "f1_score": 0.6865,
+    "label_definition": {
+        "INCREASING": "Future arrival quantity increases by >10%",
+        "STABLE": "Future arrival quantity changes by -10% to +10%",
+        "DECREASING": "Future arrival quantity decreases by >10%"
+    }
+}

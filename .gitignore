@@ -49,3 +49,6 @@ build/
 *.tmp
 *.temp
 *.log
+
+# ML trained model files
+ML/models/*.pkl
