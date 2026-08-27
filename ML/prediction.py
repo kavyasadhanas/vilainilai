@@ -27,6 +27,26 @@ price_model = joblib.load(
 
 
 # ============================================================
+# LOAD DEMAND FORECASTING MODEL
+# ============================================================
+
+DEMAND_MODEL_PATH = os.path.join(
+    MODEL_DIR,
+    "tomato_demand_model.pkl"
+)
+
+demand_package = joblib.load(
+    DEMAND_MODEL_PATH
+)
+
+demand_model = demand_package["model"]
+
+demand_reverse_mapping = (
+    demand_package["reverse_mapping"]
+)
+
+
+# ============================================================
 # LOAD SHOCK DETECTION MODEL
 # ============================================================
 
@@ -97,7 +117,81 @@ def predict_price(
 
 
 # ============================================================
-# 2. SHOCK DETECTION
+# 2. DEMAND DIRECTION PREDICTION
+# ============================================================
+
+def predict_demand(
+    market,
+    district,
+    variety,
+    arrival_quantity,
+    day_of_week,
+    day_of_month,
+    month,
+    week_of_year,
+    price_lag_1,
+    price_lag_7,
+    price_lag_14,
+    rolling_price_7,
+    rolling_price_14
+):
+    """
+    Predict tomato demand direction.
+
+    The demand model uses market arrival changes
+    as a demand-pressure proxy.
+
+    Returns:
+        dictionary containing:
+        - direction
+        - confidence
+    """
+
+    input_data = pd.DataFrame([{
+        "Market": market,
+        "District": district,
+        "Variety": variety,
+        "Arrival Quantity Kg": arrival_quantity,
+        "day_of_week": day_of_week,
+        "day_of_month": day_of_month,
+        "month": month,
+        "week_of_year": week_of_year,
+        "price_lag_1": price_lag_1,
+        "price_lag_7": price_lag_7,
+        "price_lag_14": price_lag_14,
+        "rolling_price_7": rolling_price_7,
+        "rolling_price_14": rolling_price_14
+    }])
+
+    # Predict encoded demand class
+    prediction = demand_model.predict(
+        input_data
+    )[0]
+
+    # Get class probabilities
+    probabilities = demand_model.predict_proba(
+        input_data
+    )[0]
+
+    # Convert encoded class to actual label
+    direction = demand_reverse_mapping[
+        int(prediction)
+    ]
+
+    # Highest probability = confidence
+    confidence = max(probabilities) * 100
+
+    return {
+        "direction": direction,
+        "confidence": round(
+            float(confidence),
+            2
+        )
+    }
+
+
+# ============================================================
+# 3. SHOCK DETECTION
 # ============================================================
 
 def detect_shock(
@@ -184,16 +278,20 @@ def detect_shock(
 
     return {
         "status": status,
+
         "is_anomaly": bool(
             overall_anomaly
         ),
+
         "anomaly_score": round(
             float(anomaly_score),
             4
         ),
+
         "supply_shock": bool(
             supply_shock
         ),
+
         "price_shock": bool(
             price_shock
         )
@@ -201,7 +299,7 @@ def detect_shock(
 
 
 # ============================================================
-# 3. TEST THE FUNCTIONS
+# 4. TEST THE FUNCTIONS
 # ============================================================
 
 if __name__ == "__main__":
@@ -209,6 +307,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("VILAINILAI ML PREDICTION TEST")
     print("=" * 60)
+
 
     # --------------------------------------------------------
     # Test price prediction
@@ -233,6 +332,39 @@ if __name__ == "__main__":
     print(
         f"\nPredicted tomato price:"
         f" ₹{predicted_price}/kg"
+    )
+
+
+    # --------------------------------------------------------
+    # Test demand prediction
+    # --------------------------------------------------------
+
+    demand_result = predict_demand(
+        market="Athur(Uzhavar Sandhai )",
+        district="Dindigul",
+        variety="Tomato",
+        arrival_quantity=3000,
+        day_of_week=2,
+        day_of_month=25,
+        month=8,
+        week_of_year=35,
+        price_lag_1=25.0,
+        price_lag_7=24.0,
+        price_lag_14=23.5,
+        rolling_price_7=24.5,
+        rolling_price_14=24.0
+    )
+
+    print("\nDemand prediction:")
+
+    print(
+        f"Direction: "
+        f"{demand_result['direction']}"
+    )
+
+    print(
+        f"Confidence: "
+        f"{demand_result['confidence']}%"
     )
 
 
@@ -273,6 +405,7 @@ if __name__ == "__main__":
         f"Anomaly score: "
         f"{shock_result['anomaly_score']}"
     )
+
 
     print("\n" + "=" * 60)
     print("ML PREDICTION TEST COMPLETED")
