@@ -92,29 +92,76 @@ def optimize_allocation(
         "details": details
     }
 
+from ML.digital_twin.harvest_state import HarvestState
+from optimization.strategy_generator import generate_all_options
+
+
+def get_optimal_strategy(
+    harvest: HarvestState,
+    risk_preference: str,
+    market_price_list: list[dict],
+    buyer_offers: list[dict],
+    expected_future_price_per_kg: float = None,
+    days_to_wait: int = 2
+) -> dict:
+    """
+    THE single entry point for the rest of the team.
+
+    Takes a farmer's harvest + risk preference + available markets/buyers,
+    and returns the optimal allocation across all of them.
+
+    This is the function Member 4 (FairDeal) and Member 5 (API) should import:
+        from optimization.optimizer import get_optimal_strategy
+    """
+    options = generate_all_options(
+        harvest=harvest,
+        market_price_list=market_price_list,
+        buyer_offers=buyer_offers,
+        expected_future_price_per_kg=expected_future_price_per_kg,
+        days_to_wait=days_to_wait
+    )
+
+    result = optimize_allocation(
+        harvest_quantity_kg=harvest.quantity_kg,
+        options=options,
+        risk_preference=risk_preference
+    )
+
+    return result
 
 if __name__ == "__main__":
-    # Test: a STORE option that looks tempting on paper (higher raw price)
-    # but should lose value once risk-adjusted, especially for a LOW risk farmer
-    options = [
-        DestinationOption(
-            id="market_a", kind="MARKET",
-            price_per_kg=26, transport_cost_per_kg=1, commission_per_kg=0.5
-        ),
-        DestinationOption(
-            id="store", kind="STORE",
-            price_per_kg=32, days_to_realize=3, storage_cost_per_kg_day=0.3
-        ),
+    harvest = HarvestState(
+        crop="Tomato",
+        variety="Local",
+        quantity_kg=500,
+        quality="Grade A",
+        harvest_date="2026-08-25",
+        remaining_shelf_life_days=4,
+        storage_capacity_kg=200,
+        storage_cost_per_kg_day=0.3
+    )
+
+    market_price_list = [
+        {"id": 1, "name": "Market A", "price_per_kg": 26, "transport_cost_per_kg": 1, "commission_per_kg": 0.5, "expected_loss_per_kg": 0.02},
+        {"id": 2, "name": "Market B", "price_per_kg": 29, "transport_cost_per_kg": 3, "commission_per_kg": 0.5, "expected_loss_per_kg": 0.02},
     ]
 
-    print("=== LOW risk farmer ===")
-    result_low = optimize_allocation(500, options, risk_preference="LOW")
-    for d in result_low["details"]:
-        print(d)
-    print("Total:", result_low["total_expected_return"])
+    buyer_offers = [
+        {"id": 7, "offered_price_per_kg": 24, "quantity_kg": 300},
+    ]
 
-    print("\n=== HIGH risk farmer ===")
-    result_high = optimize_allocation(500, options, risk_preference="HIGH")
-    for d in result_high["details"]:
-        print(d)
-    print("Total:", result_high["total_expected_return"])
+    result = get_optimal_strategy(
+        harvest=harvest,
+        risk_preference="MEDIUM",
+        market_price_list=market_price_list,
+        buyer_offers=buyer_offers,
+        expected_future_price_per_kg=32,
+        days_to_wait=2
+    )
+
+    print("\n=== FINAL RECOMMENDATION ===")
+    for d in result["details"]:
+        if d["allocated_kg"] > 0:
+            print(f"  {d['allocated_kg']} kg -> {d['destination_id']} ({d['kind']}) @ ₹{d['risk_adjusted_price_per_kg']}/kg")
+
+    print(f"\nTotal expected return: ₹{result['total_expected_return']}")
