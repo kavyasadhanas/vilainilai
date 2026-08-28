@@ -30,6 +30,7 @@ def get_farmer_dashboard(
     harvest_data = {
         "id": harvest.id,
         "crop": harvest.crop,
+        "variety": harvest.variety,
         "quantity_kg": harvest.quantity_kg,
         "quality": harvest.quality,
         "harvest_date": harvest.harvest_date,
@@ -40,6 +41,7 @@ def get_farmer_dashboard(
     recommendation = generate_market_recommendation(
         db=db,
         crop=harvest.crop,
+        variety=harvest.variety,
         quantity_kg=harvest.quantity_kg
     )
 

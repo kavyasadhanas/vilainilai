@@ -64,6 +64,11 @@ class Harvest(Base):
         nullable=False
     )
 
+    variety = Column(
+        String(50),
+        default="Deshi"
+    )
+
     quantity_kg = Column(
         Float,
         nullable=False
@@ -80,7 +85,6 @@ class Harvest(Base):
     shelf_life_days = Column(
         Integer
     )
-
 
 class Market(Base):
     __tablename__ = "markets"

@@ -7,6 +7,7 @@ from database.models import MarketCost
 def generate_market_recommendation(
     db: Session,
     crop: str,
+    variety: str,
     quantity_kg: float
 ):
 
@@ -27,12 +28,13 @@ def generate_market_recommendation(
         return None
 
     # -----------------------------------------------------
-    # Compare all markets
+    # Compare all markets using ML predicted prices
     # -----------------------------------------------------
 
     result = compare_markets(
         db=db,
         crop=crop,
+        variety=variety,
         quantity_kg=quantity_kg,
         market_costs=market_costs
     )
@@ -87,8 +89,9 @@ def generate_market_recommendation(
 
     reason = (
         f'{best["market_name"]} provides the highest '
-        f'expected net return after considering '
-        f'transportation, commission and expected loss.'
+        f'expected net return based on the predicted '
+        f'market price after considering transportation, '
+        f'commission and expected loss.'
     )
 
     # -----------------------------------------------------
@@ -96,15 +99,27 @@ def generate_market_recommendation(
     # -----------------------------------------------------
 
     return {
-        "crop": crop,
 
-        "quantity_kg": quantity_kg,
+        "crop":
+            crop,
+
+        "variety":
+            variety,
+
+        "quantity_kg":
+            quantity_kg,
 
         "recommended_market_id":
             best["market_id"],
 
         "recommended_market_name":
             best["market_name"],
+
+        "predicted_price_per_kg":
+            best["predicted_price_per_kg"],
+
+        "net_price_per_kg":
+            best["net_price_per_kg"],
 
         "expected_return":
             best["expected_return"],

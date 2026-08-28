@@ -1,21 +1,42 @@
 from sqlalchemy.orm import Session
 
-from database.models import Market, MarketPrice
+from database.models import Market
+from api.services.ml_service import predict_market_price
 
+
+# ============================================================
+# DATABASE MARKET → ML DATASET MARKET MAPPING
+# ============================================================
+
+ML_MARKET_MAPPING = {
+    "Oddanchatram Market": "Dindigul(Uzhavar Sandhai )",
+    "Madurai Market": "Melur(Uzhavar Sandhai )",
+}
+
+
+# ============================================================
+# COMPARE MARKETS
+# ============================================================
 
 def compare_markets(
     db: Session,
     crop: str,
+    variety: str,
     quantity_kg: float,
-    market_costs
+    market_costs,
+    prediction_date=None
 ):
     results = []
 
+    # --------------------------------------------------------
+    # Compare every configured market
+    # --------------------------------------------------------
+
     for cost in market_costs:
 
-        # -------------------------------------------------
+        # ----------------------------------------------------
         # Get market
-        # -------------------------------------------------
+        # ----------------------------------------------------
 
         market = (
             db.query(Market)
@@ -28,54 +49,83 @@ def compare_markets(
         if not market:
             continue
 
-        # -------------------------------------------------
-        # Get latest price for this crop
-        # -------------------------------------------------
+        # ----------------------------------------------------
+        # Find corresponding ML market
+        # ----------------------------------------------------
 
-        latest_price = (
-            db.query(MarketPrice)
-            .filter(
-                MarketPrice.market_id == cost.market_id,
-                MarketPrice.crop == crop
-            )
-            .order_by(
-                MarketPrice.recorded_at.desc()
-            )
-            .first()
+        ml_market = ML_MARKET_MAPPING.get(
+            market.name
         )
 
-        if not latest_price:
+        if not ml_market:
+            # No ML mapping available for this market
             continue
 
-        market_price = latest_price.price_per_kg
+        # ----------------------------------------------------
+        # Predict future market price using XGBoost
+        # ----------------------------------------------------
 
-        # -------------------------------------------------
-        # Calculate net price
-        # -------------------------------------------------
+        try:
+
+            predicted_price = predict_market_price(
+                market=ml_market,
+                district=market.district,
+                variety=variety,
+                arrival_quantity=quantity_kg,
+                prediction_date=prediction_date
+            )
+
+        except ValueError:
+
+            # No historical data available
+            # for this market/district combination
+            continue
+
+        # ----------------------------------------------------
+        # Calculate net predicted price
+        #
+        # Net price =
+        # predicted market price
+        # - transportation cost
+        # - commission
+        # - expected loss
+        # ----------------------------------------------------
 
         net_price = (
-            market_price
+            predicted_price
             - cost.transport_cost_per_kg
             - cost.commission_per_kg
             - cost.expected_loss_per_kg
         )
 
-        # -------------------------------------------------
+        # ----------------------------------------------------
         # Calculate expected return
-        # -------------------------------------------------
+        # ----------------------------------------------------
 
         expected_return = (
             net_price * quantity_kg
         )
 
+        # ----------------------------------------------------
+        # Store market result
+        # ----------------------------------------------------
+
         results.append({
-            "market_id": market.id,
 
-            "market_name": market.name,
+            "market_id":
+                market.id,
 
-            "district": market.district,
+            "market_name":
+                market.name,
 
-            "market_price_per_kg": market_price,
+            "district":
+                market.district,
+
+            "ml_market":
+                ml_market,
+
+            "predicted_price_per_kg":
+                round(predicted_price, 2),
 
             "transport_cost_per_kg":
                 cost.transport_cost_per_kg,
@@ -93,28 +143,39 @@ def compare_markets(
                 round(expected_return, 2)
         })
 
-    # -----------------------------------------------------
-    # No market available
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # No valid market available
+    # --------------------------------------------------------
 
     if not results:
         return None
 
-    # -----------------------------------------------------
-    # Find best market
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Find market with highest expected return
+    # --------------------------------------------------------
 
     best_market = max(
         results,
         key=lambda x: x["expected_return"]
     )
 
+    # --------------------------------------------------------
+    # Final comparison result
+    # --------------------------------------------------------
+
     return {
-        "crop": crop,
 
-        "quantity_kg": quantity_kg,
+        "crop":
+            crop,
 
-        "markets": results,
+        "variety":
+            variety,
+
+        "quantity_kg":
+            quantity_kg,
+
+        "markets":
+            results,
 
         "best_market_id":
             best_market["market_id"],
