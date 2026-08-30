@@ -5,7 +5,12 @@ from api.routes import (
     farmer,
     harvest,
     market,
-    recommendation
+    recommendation,
+    forecast,
+    optimization,
+    history,
+    buyer,
+    fairdeal
 )
 
 from api.routes.dashboard import router as dashboard_router
@@ -43,7 +48,11 @@ app.include_router(harvest.router)
 app.include_router(market.router)
 app.include_router(recommendation.router)
 app.include_router(dashboard_router)
-
+app.include_router(forecast.router)
+app.include_router(optimization.router)
+app.include_router(history.router)
+app.include_router(buyer.router)
+app.include_router(fairdeal.router)
 
 # -----------------------------
 # Root

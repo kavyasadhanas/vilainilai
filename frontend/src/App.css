@@ -1,6 +1,6 @@
-/* =========================================
+/* =========================================================
    GLOBAL RESET
-========================================= */
+========================================================= */
 
 * {
   box-sizing: border-box;
@@ -12,128 +12,165 @@ html,
 body,
 #root {
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
   background: #f4f8f6;
   color: #063f35;
+
+  overflow: hidden;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
 
-/* =========================================
-   MAIN APP
-========================================= */
+/* =========================================================
+   MAIN APPLICATION
+========================================================= */
 
-.app {
+.app-layout {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+
   display: flex;
+
+  overflow: hidden;
+
   background: #f4f8f6;
 }
 
 
-/* =========================================
+/* =========================================================
    SIDEBAR
-========================================= */
+   FIXED AND NEVER SCROLLS
+========================================================= */
 
 .sidebar {
-  width: 325px;
-  height: 100vh;
-
   position: fixed;
-  left: 0;
-  top: 0;
 
-  background: #004c3f;
-  color: white;
+  top: 0;
+  left: 0;
+
+  width: 270px;
+  height: 100vh;
 
   display: flex;
   flex-direction: column;
 
+  overflow: hidden;
+
+  background: #004c3f;
+  color: #ffffff;
+
   z-index: 1000;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-
-/* =========================================
-   SIDEBAR LOGO
-========================================= */
-
-.logo-section {
-  height: 115px;
-
-  padding: 28px 28px 20px;
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 
   flex-shrink: 0;
 }
 
-.logo-section h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
+
+/* =========================================================
+   SIDEBAR LOGO
+========================================================= */
+
+.logo-section {
+  flex-shrink: 0;
+
+  padding: 21px 23px 17px;
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.12);
 }
 
+.logo-section h1 {
+  margin: 0;
+
+  font-size: 28px;
+
+  line-height: 1.1;
+
+  font-weight: 700;
+
+  color: #ffffff;
+}
+
+
+/* Vilai = white */
+/* Nilai = leaf green */
+
 .logo-section h1 span {
-  color: white;
+  color: #a8d66d;
 }
 
 .logo-section p {
   margin-top: 5px;
 
-  font-size: 14px;
+  font-size: 12px;
+
+  line-height: 1.4;
 
   color: #e1f1eb;
 }
 
 
-/* =========================================
+/* =========================================================
    SIDEBAR NAVIGATION
-========================================= */
+========================================================= */
 
 .sidebar-nav {
-  padding: 20px 17px;
+  flex: 1;
+
+  min-height: 0;
 
   display: flex;
   flex-direction: column;
 
-  gap: 7px;
+  gap: 2px;
 
-  flex-shrink: 0;
+  padding: 12px 13px;
+
+  overflow: hidden;
 }
 
 .sidebar-nav a {
   width: 100%;
-  height: 54px;
+  min-height: 39px;
 
   display: flex;
   align-items: center;
 
-  gap: 18px;
+  gap: 12px;
 
-  padding: 0 22px;
+  padding: 0 15px;
 
-  border-radius: 10px;
+  border-radius: 8px;
 
-  color: white;
+  color: #ffffff;
 
   text-decoration: none;
 
-  font-size: 18px;
+  font-size: 14px;
+
+  font-weight: 500;
+
+  flex-shrink: 0;
 
   cursor: pointer;
 
-  transition: background 0.2s ease,
-              color 0.2s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .sidebar-item {
@@ -141,15 +178,16 @@ button {
 }
 
 .sidebar-item .nav-icon {
-  width: 24px;
+  width: 21px;
 
-  display: flex;
+  display: inline-flex;
+
   align-items: center;
   justify-content: center;
 
   flex-shrink: 0;
 
-  font-size: 20px;
+  font-size: 17px;
 }
 
 .sidebar-nav a:hover {
@@ -157,12 +195,16 @@ button {
 }
 
 
-/* ACTIVE ITEM */
+/* =========================================================
+   ACTIVE NAVIGATION ITEM
+========================================================= */
 
 .sidebar-nav a.active {
-  background: white;
+  background: #ffffff;
+
   color: #004c3f;
-  font-weight: 700;
+
+  font-weight: 600;
 }
 
 .sidebar-nav a.active .nav-icon {
@@ -170,18 +212,19 @@ button {
 }
 
 
-/* =========================================
+/* =========================================================
    ASSISTANCE CARD
-========================================= */
+========================================================= */
 
 .assistance-card {
-  margin: auto 20px 15px;
+  margin: 5px 15px 14px;
 
-  padding: 20px;
+  padding: 13px 15px;
 
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border:
+    1px solid rgba(255, 255, 255, 0.22);
 
-  border-radius: 12px;
+  border-radius: 11px;
 
   background: rgba(255, 255, 255, 0.04);
 
@@ -189,134 +232,126 @@ button {
 }
 
 .assistance-card h3 {
-  font-size: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+
+  font-size: 14px;
+
+  line-height: 1.3;
 }
 
 .assistance-card p {
-  font-size: 13px;
+  margin-bottom: 7px;
+
+  font-size: 11px;
+
+  line-height: 1.35;
 
   color: #d8ebe5;
-
-  margin-bottom: 15px;
 }
 
 .assistance-card strong {
-  font-size: 16px;
-  color: white;
+  font-size: 13px;
+
+  color: #ffffff;
 }
 
 
-/* =========================================
-   FARM IMAGE
-========================================= */
+/* =========================================================
+   IMPORTANT
+   SIDEBAR ILLUSTRATION REMOVED
+========================================================= */
 
-.farm-image {
-  height: 190px;
 
-  min-height: 190px;
+/* =========================================================
+   MAIN APPLICATION AREA
+========================================================= */
 
-  background:
-    linear-gradient(
-      to bottom,
-      #b9d49a,
-      #70983f
-    );
+.main-content {
+  width: calc(100% - 270px);
+  height: 100vh;
 
-  position: relative;
+  margin-left: 270px;
 
-  overflow: hidden;
-
-  flex-shrink: 0;
-}
-
-.farm-icons {
-  position: absolute;
-
-  inset: 0;
+  min-width: 0;
+  min-height: 0;
 
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
 
-  gap: 18px;
-
-  font-size: 38px;
-}
-
-
-/* =========================================
-   MAIN AREA
-========================================= */
-
-.main-area {
-  margin-left: 325px;
-
-  width: calc(100% - 325px);
-
-  min-height: 100vh;
+  overflow: hidden;
 
   background: #f4f8f6;
 }
 
 
-/* =========================================
+/* =========================================================
    HEADER
-========================================= */
+   FIXED WITHIN MAIN CONTENT
+========================================================= */
 
 .header {
-  position: fixed;
+  position: relative;
 
-  top: 0;
-  right: 0;
-  left: 325px;
+  width: 100%;
 
-  height: 100px;
+  min-height: 68px;
+  height: 68px;
 
-  padding: 0 30px;
-
-  background: white;
-
-  border-bottom: 1px solid #dce8e3;
+  padding: 0 24px;
 
   display: flex;
   align-items: center;
 
-  z-index: 900;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  background: #ffffff;
+
+  border-bottom:
+    1px solid #dce8e3;
+
+  flex-shrink: 0;
+
+  z-index: 100;
 }
 
 
-/* =========================================
+/* =========================================================
    HEADER DATE
-========================================= */
+========================================================= */
 
 .header-date {
   display: flex;
 
   align-items: center;
 
-  gap: 12px;
+  gap: 8px;
 
-  color: #184d43;
+  color: #315f56;
 
-  font-size: 15px;
+  font-size: 13px;
 
   white-space: nowrap;
 }
 
 .header-date strong {
   color: #073f35;
+
+  font-size: 13px;
 }
 
 
-/* =========================================
+/* =========================================================
    HEADER RIGHT
-========================================= */
+========================================================= */
 
 .header-right {
   display: flex;
 
   align-items: center;
+
+  gap: 11px;
 
   height: 100%;
 
@@ -324,62 +359,64 @@ button {
 }
 
 
-/* =========================================
+/* =========================================================
    WEATHER
-========================================= */
+========================================================= */
 
 .header-weather {
   display: flex;
 
   align-items: center;
 
-  gap: 12px;
+  gap: 7px;
 }
 
 .weather-icon {
-  font-size: 28px;
+  font-size: 21px;
 }
 
 .header-weather strong {
   display: block;
 
-  font-size: 16px;
+  font-size: 15px;
 
   color: #063f35;
 }
 
 .header-weather p {
-  margin-top: 2px;
+  margin-top: 1px;
 
-  font-size: 13px;
+  font-size: 11px;
 
   color: #52736b;
 }
 
 
-/* =========================================
+/* =========================================================
    NOTIFICATION
-========================================= */
+========================================================= */
 
 .header-icon-button {
-  width: 42px;
-  height: 42px;
+  width: 35px;
+  height: 35px;
 
-  margin-left: 30px;
+  margin: 0;
 
-  border: none;
+  border:
+    1px solid #dce9e4;
 
-  background: transparent;
+  border-radius: 8px;
 
-  display: flex;
+  background: #ffffff;
+
+  display: inline-flex;
+
   align-items: center;
   justify-content: center;
 
-  font-size: 22px;
+  font-size: 15px;
 
   cursor: pointer;
-
-  border-radius: 50%;
 }
 
 .header-icon-button:hover {
@@ -387,49 +424,62 @@ button {
 }
 
 
-/* =========================================
+/* =========================================================
    LANGUAGE
-========================================= */
+========================================================= */
 
 .header-language {
-  height: 48px;
+  min-height: 35px;
 
-  padding: 0 25px;
+  padding: 0 11px;
 
-  margin-left: 20px;
+  margin: 0;
 
-  border-left: 1px solid #dce5e1;
-  border-right: 1px solid #dce5e1;
+  border:
+    1px solid #dce9e4;
 
-  background: transparent;
+  border-radius: 7px;
+
+  background: #ffffff;
 
   display: flex;
+
   align-items: center;
 
-  gap: 8px;
+  gap: 6px;
 
   color: #164e44;
 
-  font-size: 16px;
+  font-size: 12px;
 
   cursor: pointer;
 }
 
+.header-language:hover {
+  background: #f1f7f4;
+}
 
-/* =========================================
+
+/* =========================================================
    FARMER PROFILE
-========================================= */
+========================================================= */
 
 .farmer-profile {
+  min-height: 38px;
+
   display: flex;
 
   align-items: center;
 
-  gap: 12px;
+  gap: 8px;
 
-  margin-left: 20px;
+  margin: 0;
+
+  padding: 2px 4px 2px 5px;
 
   border: none;
+
+  border-radius: 9px;
 
   background: transparent;
 
@@ -438,21 +488,25 @@ button {
   font-family: inherit;
 
   text-align: left;
+
+  color: #063f35;
 }
 
 .profile-icon {
-  width: 45px;
-  height: 45px;
+  width: 32px;
+  height: 32px;
 
   border-radius: 50%;
 
   background: #edf5f0;
 
   display: flex;
+
   align-items: center;
+
   justify-content: center;
 
-  font-size: 23px;
+  font-size: 14px;
 }
 
 .profile-info {
@@ -460,92 +514,171 @@ button {
 
   flex-direction: column;
 
-  min-width: 120px;
+  align-items: flex-start;
+
+  min-width: 0;
 }
 
 .profile-info strong {
-  font-size: 15px;
+  font-size: 13px;
 
   color: #083e35;
 }
 
 .profile-info span {
-  margin-top: 2px;
+  margin-top: 1px;
 
-  font-size: 13px;
+  font-size: 10px;
 
   color: #6b827b;
 }
 
 .profile-arrow {
-  font-size: 15px;
+  margin-left: 2px;
+
+  font-size: 11px;
 
   color: #185449;
 }
 
 
-/* =========================================
-   DASHBOARD CONTENT
-========================================= */
+/* =========================================================
+   PAGE CONTENT
+   THIS IS THE ONLY SCROLLABLE DESKTOP AREA
+========================================================= */
 
 .page-content {
-  padding-top: 100px;
+  flex: 1;
 
-  min-height: 100vh;
+  width: 100%;
 
-  padding-left: 70px;
-  padding-right: 70px;
-  padding-bottom: 60px;
+  min-width: 0;
+  min-height: 0;
+
+  overflow-y: auto;
 
   overflow-x: hidden;
+
+  background: #f4f8f6;
+
+  -webkit-overflow-scrolling: touch;
+
+  scrollbar-gutter: stable;
 }
 
 
-/* =========================================
-   RESPONSIVE
-========================================= */
+/* =========================================================
+   RESPONSIVE — 1200px
+========================================================= */
 
 @media (max-width: 1200px) {
 
   .sidebar {
-    width: 270px;
+    width: 255px;
   }
 
-  .main-area {
-    margin-left: 270px;
+  .main-content {
+    width: calc(100% - 255px);
 
-    width: calc(100% - 270px);
+    margin-left: 255px;
   }
 
-  .header {
-    left: 270px;
-  }
-
-  .page-content {
-    padding-left: 45px;
-    padding-right: 45px;
-  }
 }
 
+
+/* =========================================================
+   RESPONSIVE — 900px
+========================================================= */
 
 @media (max-width: 900px) {
 
   .sidebar {
-    width: 230px;
+    width: 220px;
   }
 
-  .main-area {
-    margin-left: 230px;
+  .main-content {
+    width: calc(100% - 220px);
 
-    width: calc(100% - 230px);
+    margin-left: 220px;
   }
 
   .header {
-    left: 230px;
+    padding: 0 16px;
+  }
+
+  .header-weather {
+    display: none;
+  }
+
+  .profile-info {
+    display: none;
+  }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE — 650px
+========================================================= */
+
+@media (max-width: 650px) {
+
+  body {
+    overflow: auto;
+  }
+
+  .app-layout {
+    width: 100%;
+    height: auto;
+
+    display: block;
+
+    overflow: visible;
+  }
+
+  .sidebar {
+    position: relative;
+
+    width: 100%;
+    height: auto;
+
+    overflow: hidden;
+  }
+
+  .sidebar-nav {
+    overflow: visible;
+  }
+
+  .main-content {
+    width: 100%;
+    height: auto;
+
+    margin-left: 0;
+
+    overflow: visible;
   }
 
   .page-content {
-    padding-left: 25px;
-    padding-right: 25px;
+    width: 100%;
+
+    height: auto;
+
+    overflow: visible;
   }
+
+  .header {
+    min-height: 60px;
+    height: 60px;
+
+    padding: 0 12px;
+  }
+
+  .header-date {
+    font-size: 11px;
+  }
+
+  .header-language {
+    display: none;
+  }
+
 }

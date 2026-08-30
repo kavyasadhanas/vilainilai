@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class HarvestCreate(BaseModel):
     farmer_id: int
     crop: str
+    variety: str = "Deshi"
     quantity_kg: float
     quality: str
     harvest_date: date

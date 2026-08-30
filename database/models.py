@@ -242,11 +242,15 @@ class BuyerOffer(Base):
         default="PENDING"
     )
 
+    counteroffer_per_kg = Column(
+        Float,
+        nullable=True
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow
     )
-
 
 class Recommendation(Base):
     __tablename__ = "recommendations"
@@ -263,6 +267,10 @@ class Recommendation(Base):
         nullable=False
     )
 
+    # ---------------------------------------------------------
+    # FINAL DECISION
+    # ---------------------------------------------------------
+
     action = Column(
         String(30)
     )
@@ -278,6 +286,52 @@ class Recommendation(Base):
     expected_return = Column(
         Float
     )
+
+    # ---------------------------------------------------------
+    # ML SNAPSHOT
+    # ---------------------------------------------------------
+
+    predicted_price_per_kg = Column(
+        Float
+    )
+
+    net_price_per_kg = Column(
+        Float
+    )
+
+    # ---------------------------------------------------------
+    # FAIRDEAL SNAPSHOT
+    # ---------------------------------------------------------
+
+    risk_preference = Column(
+        String(30)
+    )
+
+    reservation_price = Column(
+        Float
+    )
+
+    # ---------------------------------------------------------
+    # OPTIMIZATION SNAPSHOT
+    # Stored as JSON text
+    # ---------------------------------------------------------
+
+    optimization_result = Column(
+        Text
+    )
+
+    # ---------------------------------------------------------
+    # FAIRDEAL SNAPSHOT
+    # Stored as JSON text
+    # ---------------------------------------------------------
+
+    fairdeal_result = Column(
+        Text
+    )
+
+    # ---------------------------------------------------------
+    # EXPLANATION
+    # ---------------------------------------------------------
 
     explanation = Column(
         Text

@@ -8,7 +8,6 @@ from api.schemas.comparison import (
     MarketComparisonResponse
 )
 
-from api.services.market_service import compare_markets
 from api.schemas.market import (
     MarketCreate,
     MarketResponse,
@@ -16,7 +15,14 @@ from api.schemas.market import (
     MarketPriceResponse
 )
 
-from database.models import Market, MarketPrice
+from api.services.market_service import (
+    compare_markets
+)
+
+from database.models import (
+    Market,
+    MarketPrice
+)
 
 
 router = APIRouter(
@@ -25,11 +31,19 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=MarketResponse)
+# ============================================================
+# CREATE MARKET
+# ============================================================
+
+@router.post(
+    "/",
+    response_model=MarketResponse
+)
 def create_market(
     market_data: MarketCreate,
     db: Session = Depends(get_db)
 ):
+
     market = Market(
         name=market_data.name,
         district=market_data.district,
@@ -38,10 +52,17 @@ def create_market(
     )
 
     db.add(market)
+
     db.commit()
+
     db.refresh(market)
 
     return market
+
+
+# ============================================================
+# COMPARE MARKETS
+# ============================================================
 
 @router.post(
     "/compare",
@@ -54,29 +75,55 @@ def compare_market_options(
 
     result = compare_markets(
         db=db,
+
         crop=request.crop,
+
+        variety=request.variety,
+
         quantity_kg=request.quantity_kg,
-        market_costs=request.market_costs
+
+        market_costs=request.market_costs,
+
+        prediction_date=request.prediction_date
     )
 
     if not result:
+
         raise HTTPException(
             status_code=404,
-            detail="No market price data found for the requested crop."
+
+            detail=(
+                "No valid market prediction "
+                "data found for the requested crop."
+            )
         )
 
     return result
 
-@router.get("/{market_id}", response_model=MarketResponse)
+
+# ============================================================
+# GET MARKET
+# ============================================================
+
+@router.get(
+    "/{market_id}",
+    response_model=MarketResponse
+)
 def get_market(
     market_id: int,
     db: Session = Depends(get_db)
 ):
-    market = db.query(Market).filter(
-        Market.id == market_id
-    ).first()
+
+    market = (
+        db.query(Market)
+        .filter(
+            Market.id == market_id
+        )
+        .first()
+    )
 
     if not market:
+
         raise HTTPException(
             status_code=404,
             detail="Market not found"
@@ -84,6 +131,10 @@ def get_market(
 
     return market
 
+
+# ============================================================
+# CREATE MARKET PRICE
+# ============================================================
 
 @router.post(
     "/prices",
@@ -93,11 +144,18 @@ def create_market_price(
     price_data: MarketPriceCreate,
     db: Session = Depends(get_db)
 ):
-    market = db.query(Market).filter(
-        Market.id == price_data.market_id
-    ).first()
+
+    market = (
+        db.query(Market)
+        .filter(
+            Market.id
+            == price_data.market_id
+        )
+        .first()
+    )
 
     if not market:
+
         raise HTTPException(
             status_code=404,
             detail="Market not found"
@@ -105,17 +163,27 @@ def create_market_price(
 
     price = MarketPrice(
         market_id=price_data.market_id,
+
         crop=price_data.crop,
+
         price_per_kg=price_data.price_per_kg,
-        arrival_quantity_kg=price_data.arrival_quantity_kg
+
+        arrival_quantity_kg=
+            price_data.arrival_quantity_kg
     )
 
     db.add(price)
+
     db.commit()
+
     db.refresh(price)
 
     return price
 
+
+# ============================================================
+# GET MARKET PRICES
+# ============================================================
 
 @router.get(
     "/{market_id}/prices",
@@ -125,8 +193,14 @@ def get_market_prices(
     market_id: int,
     db: Session = Depends(get_db)
 ):
-    prices = db.query(MarketPrice).filter(
-        MarketPrice.market_id == market_id
-    ).all()
+
+    prices = (
+        db.query(MarketPrice)
+        .filter(
+            MarketPrice.market_id
+            == market_id
+        )
+        .all()
+    )
 
     return prices

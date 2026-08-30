@@ -1,9 +1,17 @@
+import { NavLink } from "react-router-dom";
+
+
 function Sidebar() {
+
   return (
     <aside className="sidebar">
 
-      {/* Logo */}
+      {/* =================================================
+          LOGO
+      ================================================= */}
+
       <div className="logo-section">
+
         <h1>
           Vilai<span>Nilai</span>
         </h1>
@@ -11,66 +19,152 @@ function Sidebar() {
         <p>
           Smart Decisions. Better Returns.
         </p>
+
       </div>
 
 
-      {/* Navigation */}
+      {/* =================================================
+          NAVIGATION
+      ================================================= */}
+
       <nav className="sidebar-nav">
 
-        <a className="sidebar-item active">
-          <span className="nav-icon">▦</span>
-          <span>Dashboard</span>
-        </a>
+        <NavLink
+          to="/dashboard"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            ▦
+          </span>
+          <span>
+            Dashboard
+          </span>
+        </NavLink>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">📊</span>
-          <span>Markets</span>
-        </a>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">📈</span>
-          <span>Price Forecast</span>
-        </a>
+        <NavLink
+          to="/markets"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            📊
+          </span>
+          <span>
+            Markets
+          </span>
+        </NavLink>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">📊</span>
-          <span>Harvest Planner</span>
-        </a>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">🌱</span>
-          <span>My Crops</span>
-        </a>
+        <NavLink
+          to="/price-forecast"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            📈
+          </span>
+          <span>
+            Price Forecast
+          </span>
+        </NavLink>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">🏠</span>
-          <span>Storage Planner</span>
-        </a>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">🔔</span>
-          <span>Alerts</span>
-        </a>
+        <NavLink
+          to="/harvest-planner"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            📋
+          </span>
+          <span>
+            Harvest Planner
+          </span>
+        </NavLink>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">◷</span>
-          <span>History</span>
-        </a>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">⚙</span>
-          <span>Settings</span>
-        </a>
+        <NavLink
+          to="/my-crops"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            🌱
+          </span>
+          <span>
+            My Crops
+          </span>
+        </NavLink>
 
-        <a className="sidebar-item">
-          <span className="nav-icon">?</span>
-          <span>Help &amp; Support</span>
-        </a>
+
+        <NavLink
+          to="/storage-planner"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            🏠
+          </span>
+          <span>
+            Storage Planner
+          </span>
+        </NavLink>
+
+
+        <NavLink
+          to="/fairdeal"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            🤝
+          </span>
+          <span>
+            FairDeal
+          </span>
+        </NavLink>
+
+
+        <NavLink
+          to="/alerts"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            🔔
+          </span>
+          <span>
+            Alerts
+          </span>
+        </NavLink>
+
+
+        <NavLink
+          to="/history"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            ◷
+          </span>
+          <span>
+            History
+          </span>
+        </NavLink>
+
+
+        <NavLink
+          to="/help"
+          className="sidebar-item"
+        >
+          <span className="nav-icon">
+            ?
+          </span>
+          <span>
+            Help &amp; Support
+          </span>
+        </NavLink>
 
       </nav>
 
 
-      {/* Assistance Card */}
+      {/* =================================================
+          ASSISTANCE CARD
+      ================================================= */}
+
       <div className="assistance-card">
 
         <h3>
@@ -87,16 +181,9 @@ function Sidebar() {
 
       </div>
 
-
-      {/* Bottom Illustration */}
-      <div className="farm-image">
-        <div className="farm-icons">
-          🌾 🚜 🌱
-        </div>
-      </div>
-
     </aside>
   );
 }
+
 
 export default Sidebar;

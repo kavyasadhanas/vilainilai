@@ -15,12 +15,14 @@ PROJECT_ROOT = os.path.abspath(
     )
 )
 
+
 MODEL_PATH = os.path.join(
     PROJECT_ROOT,
     "ML",
     "models",
     "xgboost_tomato_price_model.pkl"
 )
+
 
 FEATURES_PATH = os.path.join(
     PROJECT_ROOT,
@@ -31,12 +33,32 @@ FEATURES_PATH = os.path.join(
 
 
 # ============================================================
-# LOAD MODEL
+# MODEL
 # ============================================================
 
-price_model = joblib.load(
-    MODEL_PATH
-)
+price_model = None
+
+
+def get_price_model():
+    """
+    Load the XGBoost model only when a prediction is requested.
+    """
+
+    global price_model
+
+    if price_model is None:
+
+        if not os.path.exists(MODEL_PATH):
+
+            raise FileNotFoundError(
+                f"Model file not found: {MODEL_PATH}"
+            )
+
+        price_model = joblib.load(
+            MODEL_PATH
+        )
+
+    return price_model
 
 
 # ============================================================
@@ -71,7 +93,7 @@ def predict_market_price(
     """
 
     # --------------------------------------------------------
-    # Filter historical data for the requested market
+    # Filter historical data for requested market
     # --------------------------------------------------------
 
     market_history = historical_features[
@@ -81,12 +103,13 @@ def predict_market_price(
     ].copy()
 
     if market_history.empty:
+
         raise ValueError(
             f"No historical data found for market: {market}"
         )
 
     # --------------------------------------------------------
-    # Use the latest historical record
+    # Latest historical record
     # --------------------------------------------------------
 
     latest = (
@@ -96,7 +119,7 @@ def predict_market_price(
     )
 
     # --------------------------------------------------------
-    # Determine prediction date
+    # Prediction date
     # --------------------------------------------------------
 
     if prediction_date is None:
@@ -116,11 +139,17 @@ def predict_market_price(
     # Calendar features
     # --------------------------------------------------------
 
-    day_of_week = prediction_date.dayofweek
+    day_of_week = (
+        prediction_date.dayofweek
+    )
 
-    day_of_month = prediction_date.day
+    day_of_month = (
+        prediction_date.day
+    )
 
-    month = prediction_date.month
+    month = (
+        prediction_date.month
+    )
 
     week_of_year = (
         prediction_date.isocalendar().week
@@ -176,7 +205,9 @@ def predict_market_price(
     # Predict
     # --------------------------------------------------------
 
-    prediction = price_model.predict(
+    model = get_price_model()
+
+    prediction = model.predict(
         input_data
     )[0]
 

@@ -1,32 +1,167 @@
+import { useEffect, useState } from "react";
+
+import {
+  getFarmer,
+  CURRENT_FARMER_ID
+} from "../services/api";
+
+
 function Header() {
+
+  const [currentTime, setCurrentTime] =
+    useState(new Date());
+
+  const [farmer, setFarmer] =
+    useState(null);
+
+
+  /* =======================================================
+     LIVE DATE AND TIME
+  ======================================================= */
+
+  useEffect(() => {
+
+    const timer =
+      setInterval(() => {
+
+        setCurrentTime(
+          new Date()
+        );
+
+      }, 1000);
+
+
+    return () => {
+      clearInterval(timer);
+    };
+
+  }, []);
+
+
+  /* =======================================================
+     LOAD FARMER PROFILE
+  ======================================================= */
+
+  useEffect(() => {
+
+    async function loadFarmer() {
+
+      try {
+
+        const result =
+          await getFarmer(
+            CURRENT_FARMER_ID
+          );
+
+        setFarmer(result);
+
+      } catch (err) {
+
+        console.error(
+          "Header farmer loading error:",
+          err
+        );
+
+      }
+
+    }
+
+    loadFarmer();
+
+  }, []);
+
+
+  /* =======================================================
+     DATE FORMAT
+  ======================================================= */
+
+  const dateText =
+    currentTime.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }
+    );
+
+
+  /* =======================================================
+     TIME FORMAT
+  ======================================================= */
+
+  const timeText =
+    currentTime.toLocaleTimeString(
+      "en-IN",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      }
+    );
+
+
   return (
     <header className="header">
 
-      {/* Date and Time */}
+
+      {/* ===================================================
+          DATE AND TIME
+      =================================================== */}
+
       <div className="header-date">
-        <strong>Today, 26 Aug 2026</strong>
-        <span>•</span>
-        <span>10:42 AM</span>
+
+        <strong>
+          {dateText}
+        </strong>
+
+        <span>
+          •
+        </span>
+
+        <span>
+          {timeText}
+        </span>
+
       </div>
 
 
-      {/* Right Side */}
+      {/* ===================================================
+          RIGHT SIDE
+      =================================================== */}
+
       <div className="header-right">
 
-        {/* Weather */}
+
+        {/* ===============================================
+            WEATHER
+        =============================================== */}
+
         <div className="header-weather">
+
           <span className="weather-icon">
             ☁️
           </span>
 
           <div>
-            <strong>31°C</strong>
-            <p>Partly Cloudy</p>
+
+            <strong>
+              31°C
+            </strong>
+
+            <p>
+              Partly Cloudy
+            </p>
+
           </div>
+
         </div>
 
 
-        {/* Notification */}
+        {/* ===============================================
+            NOTIFICATIONS
+        =============================================== */}
+
         <button
           className="header-icon-button"
           type="button"
@@ -36,18 +171,31 @@ function Header() {
         </button>
 
 
-        {/* Language */}
+        {/* ===============================================
+            LANGUAGE
+        =============================================== */}
+
         <button
           className="header-language"
           type="button"
           aria-label="Change language"
         >
-          <span>தமிழ்</span>
-          <span>⌄</span>
+
+          <span>
+            English
+          </span>
+
+          <span>
+            ⌄
+          </span>
+
         </button>
 
 
-        {/* Farmer Profile */}
+        {/* ===============================================
+            FARMER PROFILE
+        =============================================== */}
+
         <button
           className="farmer-profile"
           type="button"
@@ -59,8 +207,16 @@ function Header() {
           </div>
 
           <div className="profile-info">
-            <strong>Kavya Sadhana</strong>
-            <span>Farmer</span>
+
+            <strong>
+              {farmer?.name ||
+                `Farmer #${CURRENT_FARMER_ID}`}
+            </strong>
+
+            <span>
+              Farmer
+            </span>
+
           </div>
 
           <span className="profile-arrow">
@@ -69,10 +225,12 @@ function Header() {
 
         </button>
 
+
       </div>
 
     </header>
   );
 }
+
 
 export default Header;
