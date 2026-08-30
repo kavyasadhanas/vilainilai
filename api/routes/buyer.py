@@ -12,6 +12,7 @@ from database.models import (
 from api.schemas.buyer import (
     BuyerCreate,
     BuyerResponse,
+    BuyerHarvestResponse,
     BuyerOfferCreate,
     BuyerOfferResponse,
 )
@@ -81,6 +82,38 @@ def get_buyer(
 
 
 # ============================================================
+# GET AVAILABLE HARVESTS
+# ============================================================
+
+@router.get(
+    "/available-harvests",
+    response_model=list[BuyerHarvestResponse]
+)
+def get_available_harvests(
+    db: Session = Depends(get_db)
+):
+    """
+    Return harvests that buyers can make offers for.
+
+    For now every stored harvest is considered available.
+    The buyer can then choose the quantity they want to buy.
+
+    A future version can add an explicit harvest status such
+    as AVAILABLE / SOLD / CLOSED.
+    """
+
+    harvests = (
+        db.query(Harvest)
+        .order_by(
+            Harvest.id.desc()
+        )
+        .all()
+    )
+
+    return harvests
+
+
+# ============================================================
 # CREATE BUYER OFFER
 # ============================================================
 
@@ -92,6 +125,10 @@ def create_buyer_offer(
     offer_data: BuyerOfferCreate,
     db: Session = Depends(get_db)
 ):
+
+    # --------------------------------------------------------
+    # CHECK BUYER
+    # --------------------------------------------------------
 
     buyer = (
         db.query(Buyer)
@@ -108,6 +145,11 @@ def create_buyer_offer(
             detail="Buyer not found"
         )
 
+
+    # --------------------------------------------------------
+    # CHECK HARVEST
+    # --------------------------------------------------------
+
     harvest = (
         db.query(Harvest)
         .filter(
@@ -123,6 +165,11 @@ def create_buyer_offer(
             detail="Harvest not found"
         )
 
+
+    # --------------------------------------------------------
+    # VALIDATE QUANTITY
+    # --------------------------------------------------------
+
     if offer_data.quantity_kg <= 0:
 
         raise HTTPException(
@@ -130,7 +177,16 @@ def create_buyer_offer(
             detail="Offer quantity must be greater than zero."
         )
 
-    if offer_data.quantity_kg > harvest.quantity_kg:
+
+    harvest_quantity = float(
+        harvest.quantity_kg or 0
+    )
+
+
+    if (
+        offer_data.quantity_kg
+        > harvest_quantity
+    ):
 
         raise HTTPException(
             status_code=400,
@@ -140,18 +196,35 @@ def create_buyer_offer(
             )
         )
 
-    if offer_data.offered_price_per_kg <= 0:
+
+    # --------------------------------------------------------
+    # VALIDATE PRICE
+    # --------------------------------------------------------
+
+    if (
+        offer_data.offered_price_per_kg
+        <= 0
+    ):
 
         raise HTTPException(
             status_code=400,
             detail="Offer price must be greater than zero."
         )
 
+
+    # --------------------------------------------------------
+    # CREATE OFFER
+    # --------------------------------------------------------
+
     offer = BuyerOffer(
 
-        buyer_id=offer_data.buyer_id,
+        buyer_id=(
+            offer_data.buyer_id
+        ),
 
-        harvest_id=offer_data.harvest_id,
+        harvest_id=(
+            offer_data.harvest_id
+        ),
 
         offered_price_per_kg=(
             offer_data.offered_price_per_kg
@@ -166,11 +239,16 @@ def create_buyer_offer(
         counteroffer_per_kg=None
     )
 
-    db.add(offer)
+
+    db.add(
+        offer
+    )
 
     db.commit()
 
-    db.refresh(offer)
+    db.refresh(
+        offer
+    )
 
     return offer
 
@@ -202,6 +280,51 @@ def get_harvest_offers(
             status_code=404,
             detail="Harvest not found"
         )
+
+
+    offers = (
+        db.query(BuyerOffer)
+        .filter(
+            BuyerOffer.harvest_id
+            == harvest_id
+        )
+        .order_by(
+            BuyerOffer.created_at.desc()
+        )
+        .all()
+    )
+
+    return offers
+
+
+# ============================================================
+# GET ALL OFFERS FOR A HARVEST
+# ============================================================
+
+@router.get(
+    "/harvests/{harvest_id}/all-offers",
+    response_model=list[BuyerOfferResponse]
+)
+def get_all_harvest_offers(
+    harvest_id: int,
+    db: Session = Depends(get_db)
+):
+
+    harvest = (
+        db.query(Harvest)
+        .filter(
+            Harvest.id == harvest_id
+        )
+        .first()
+    )
+
+    if not harvest:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Harvest not found"
+        )
+
 
     offers = (
         db.query(BuyerOffer)
@@ -249,7 +372,13 @@ def update_offer_status(
             detail="Buyer offer not found"
         )
 
-    status = status.strip().upper()
+
+    status = (
+        status
+        .strip()
+        .upper()
+    )
+
 
     allowed_statuses = {
         "PENDING",
@@ -257,6 +386,7 @@ def update_offer_status(
         "NEGOTIATING",
         "REJECTED"
     }
+
 
     if status not in allowed_statuses:
 
@@ -267,6 +397,7 @@ def update_offer_status(
                 "ACCEPTED, NEGOTIATING or REJECTED."
             )
         )
+
 
     if (
         status == "NEGOTIATING"
@@ -284,58 +415,24 @@ def update_offer_status(
             )
         )
 
+
     offer.status = status
 
+
     offer.counteroffer_per_kg = (
+
         counteroffer_per_kg
+
         if status == "NEGOTIATING"
+
         else None
     )
 
+
     db.commit()
 
-    db.refresh(offer)
+    db.refresh(
+        offer
+    )
 
     return offer
-
-# ============================================================
-# GET ALL OFFERS FOR A HARVEST
-# ============================================================
-
-@router.get(
-    "/harvests/{harvest_id}/all-offers",
-    response_model=list[BuyerOfferResponse]
-)
-def get_all_harvest_offers(
-    harvest_id: int,
-    db: Session = Depends(get_db)
-):
-
-    harvest = (
-        db.query(Harvest)
-        .filter(
-            Harvest.id == harvest_id
-        )
-        .first()
-    )
-
-    if not harvest:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Harvest not found"
-        )
-
-    offers = (
-        db.query(BuyerOffer)
-        .filter(
-            BuyerOffer.harvest_id
-            == harvest_id
-        )
-        .order_by(
-            BuyerOffer.created_at.desc()
-        )
-        .all()
-    )
-
-    return offers

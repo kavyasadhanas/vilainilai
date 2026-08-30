@@ -7,10 +7,10 @@ from database.models import (
     Harvest,
     Market,
     MarketCost,
+    Buyer,
 )
 
 from api.services.optimization_service import (
-    ML_MARKET_MAPPING,
     build_harvest_state,
     build_market_price_list,
     build_buyer_offer_list,
@@ -19,13 +19,14 @@ from api.services.optimization_service import (
 )
 
 from optimization.optimizer import (
-    get_optimal_strategy
+    get_optimal_strategy,
 )
 
 
 # ============================================================
 # SIMULATION HELPERS
 # ============================================================
+
 
 def _calculate_allocation_totals(
     result: dict
@@ -82,8 +83,210 @@ def _calculate_allocation_totals(
                 storage_kg,
                 2
             )
-
     }
+
+
+# ============================================================
+# ADD USER-FRIENDLY DESTINATION NAMES
+# ============================================================
+
+def _add_destination_names(
+    db: Session,
+    details: list[dict]
+) -> list[dict]:
+    """
+    Convert optimizer internal IDs into user-friendly names.
+
+    Examples:
+
+        market_3
+            -> Attayampatti(Uzhavar Sandhai )
+
+        buyer_6
+            -> Salem Fresh Traders
+
+        store
+            -> Storage
+
+    The optimizer itself continues to use destination_id.
+    This function only enriches the response sent to the UI.
+    """
+
+    enriched = []
+
+    for detail in details:
+
+        item = dict(
+            detail
+        )
+
+        destination_id = (
+            item.get(
+                "destination_id"
+            )
+            or ""
+        )
+
+        kind = (
+            item.get(
+                "kind"
+            )
+            or ""
+        ).upper()
+
+
+        # ----------------------------------------------------
+        # MARKET
+        # ----------------------------------------------------
+
+        if kind == "MARKET":
+
+            market_id = None
+
+            if destination_id.startswith(
+                "market_"
+            ):
+
+                try:
+
+                    market_id = int(
+                        destination_id.split(
+                            "_",
+                            1
+                        )[1]
+                    )
+
+                except (
+                    ValueError,
+                    IndexError
+                ):
+
+                    market_id = None
+
+
+            market = None
+
+            if market_id is not None:
+
+                market = (
+                    db.query(Market)
+                    .filter(
+                        Market.id
+                        == market_id
+                    )
+                    .first()
+                )
+
+
+            if market:
+
+                item[
+                    "destination_name"
+                ] = market.name
+
+                item[
+                    "district"
+                ] = market.district
+
+            else:
+
+                item[
+                    "destination_name"
+                ] = destination_id
+
+
+        # ----------------------------------------------------
+        # BUYER
+        # ----------------------------------------------------
+
+        elif kind == "BUYER":
+
+            buyer_id = None
+
+            if destination_id.startswith(
+                "buyer_"
+            ):
+
+                try:
+
+                    buyer_id = int(
+                        destination_id.split(
+                            "_",
+                            1
+                        )[1]
+                    )
+
+                except (
+                    ValueError,
+                    IndexError
+                ):
+
+                    buyer_id = None
+
+
+            buyer = None
+
+            if buyer_id is not None:
+
+                buyer = (
+                    db.query(Buyer)
+                    .filter(
+                        Buyer.id
+                        == buyer_id
+                    )
+                    .first()
+                )
+
+
+            if buyer:
+
+                item[
+                    "destination_name"
+                ] = buyer.name
+
+                item[
+                    "buyer_location"
+                ] = buyer.location
+
+                item[
+                    "buyer_type"
+                ] = buyer.buyer_type
+
+            else:
+
+                item[
+                    "destination_name"
+                ] = destination_id
+
+
+        # ----------------------------------------------------
+        # STORAGE
+        # ----------------------------------------------------
+
+        elif kind == "STORE":
+
+            item[
+                "destination_name"
+            ] = "Storage"
+
+
+        # ----------------------------------------------------
+        # FALLBACK
+        # ----------------------------------------------------
+
+        else:
+
+            item[
+                "destination_name"
+            ] = destination_id
+
+
+        enriched.append(
+            item
+        )
+
+
+    return enriched
 
 
 # ============================================================
@@ -243,7 +446,7 @@ def _build_simulated_result(
 
 
     # --------------------------------------------------------
-    # Override storage capacity for the simulation
+    # Override storage capacity for simulation
     # --------------------------------------------------------
 
     if storage_capacity_kg is not None:
@@ -345,7 +548,8 @@ def _build_simulated_result(
             db.query(Market)
             .filter(
                 Market.id
-                == best_market_input["id"]
+                ==
+                best_market_input["id"]
             )
             .first()
         )
@@ -357,7 +561,8 @@ def _build_simulated_result(
                 db.query(MarketCost)
                 .filter(
                     MarketCost.market_id
-                    == reference_market.id
+                    ==
+                    reference_market.id
                 )
                 .first()
             )
@@ -402,8 +607,10 @@ def _build_simulated_result(
     # ========================================================
 
     if (
-        expected_future_price is not None
-        and expected_future_price > 0
+        expected_future_price
+        is not None
+        and
+        expected_future_price > 0
     ):
 
         expected_future_price *= (
@@ -434,8 +641,10 @@ def _build_simulated_result(
 
     if reference_market_cost:
 
-        # Transport in the simulated market data already
-        # includes the What-If transport adjustment.
+        # ----------------------------------------------------
+        # Use the simulated transport cost for the reference
+        # market when available.
+        # ----------------------------------------------------
 
         matching_market = next(
             (
@@ -443,8 +652,11 @@ def _build_simulated_result(
                 for market
                 in modified_market_price_list
 
-                if market.get("id")
-                == reference_market.id
+                if market.get(
+                    "id"
+                )
+                ==
+                reference_market.id
             ),
             None
         )
@@ -452,48 +664,66 @@ def _build_simulated_result(
 
         if matching_market:
 
-            future_transport_cost_per_kg = float(
-                matching_market.get(
-                    "transport_cost_per_kg",
-                    0
+            future_transport_cost_per_kg = (
+                float(
+                    matching_market.get(
+                        "transport_cost_per_kg",
+                        0
+                    )
                 )
             )
 
 
-            future_expected_loss_pct = float(
-                matching_market.get(
-                    "expected_loss_per_kg",
-                    0
+            future_expected_loss_pct = (
+                float(
+                    matching_market.get(
+                        "expected_loss_per_kg",
+                        0
+                    )
                 )
             )
+
 
         else:
 
-            future_transport_cost_per_kg = float(
-                reference_market_cost.transport_cost_per_kg
-                or 0
+            future_transport_cost_per_kg = (
+                float(
+                    reference_market_cost
+                    .transport_cost_per_kg
+                    or 0
+                )
             )
 
-            future_loss_per_kg = float(
-                reference_market_cost.expected_loss_per_kg
-                or 0
+
+            future_loss_per_kg = (
+                float(
+                    reference_market_cost
+                    .expected_loss_per_kg
+                    or 0
+                )
             )
 
 
             if (
-                expected_future_price is not None
-                and expected_future_price > 0
+                expected_future_price
+                is not None
+                and
+                expected_future_price > 0
             ):
 
                 future_expected_loss_pct = (
                     future_loss_per_kg
-                    / expected_future_price
+                    /
+                    expected_future_price
                 )
 
 
-        future_commission_per_kg = float(
-            reference_market_cost.commission_per_kg
-            or 0
+        future_commission_per_kg = (
+            float(
+                reference_market_cost
+                .commission_per_kg
+                or 0
+            )
         )
 
 
@@ -575,10 +805,12 @@ def _build_simulated_result(
             days_to_wait,
 
         "storage_capacity_kg":
-            simulated_harvest.storage_capacity_kg,
+            simulated_harvest
+            .storage_capacity_kg,
 
         "storage_cost_per_kg_day":
-            simulated_harvest.storage_cost_per_kg_day,
+            simulated_harvest
+            .storage_cost_per_kg_day,
 
         "expected_future_price_per_kg":
             (
@@ -586,15 +818,20 @@ def _build_simulated_result(
                     expected_future_price,
                     2
                 )
-                if expected_future_price
+
+                if
+                expected_future_price
                 is not None
+
                 else None
             ),
 
         "reference_market":
             (
                 reference_market.name
+
                 if reference_market
+
                 else None
             )
     }
@@ -665,7 +902,8 @@ def simulate_farmer_what_if(
     farmer = (
         db.query(Farmer)
         .filter(
-            Farmer.id == farmer_id
+            Farmer.id
+            == farmer_id
         )
         .first()
     )
@@ -854,6 +1092,40 @@ def simulate_farmer_what_if(
 
 
     # ========================================================
+    # ADD USER-FRIENDLY DESTINATION NAMES
+    # ========================================================
+
+    current_result["details"] = (
+        _add_destination_names(
+
+            db=db,
+
+            details=(
+                current_result.get(
+                    "details",
+                    []
+                )
+            )
+        )
+    )
+
+
+    simulated_result["details"] = (
+        _add_destination_names(
+
+            db=db,
+
+            details=(
+                simulated_result.get(
+                    "details",
+                    []
+                )
+            )
+        )
+    )
+
+
+    # ========================================================
     # CURRENT ALLOCATION SUMMARY
     # ========================================================
 
@@ -904,6 +1176,26 @@ def simulate_farmer_what_if(
 
 
     # ========================================================
+    # PROFIT CHANGE %
+    # ========================================================
+
+    if current_return != 0:
+
+        profit_change_percent = round(
+            (
+                return_difference
+                / current_return
+            )
+            * 100,
+            2
+        )
+
+    else:
+
+        profit_change_percent = 0.0
+
+
+    # ========================================================
     # RETURN
     # ========================================================
 
@@ -926,6 +1218,7 @@ def simulate_farmer_what_if(
                 harvest.quantity_kg
             ),
 
+
         "scenario": {
 
             "price_change_pct":
@@ -946,8 +1239,10 @@ def simulate_farmer_what_if(
                         storage_capacity_kg,
                         2
                     )
+
                     if storage_capacity_kg
                     is not None
+
                     else float(
                         farmer.storage_capacity_kg
                         or 0
@@ -961,6 +1256,10 @@ def simulate_farmer_what_if(
                 )
         },
 
+
+        # ====================================================
+        # CURRENT PLAN
+        # ====================================================
 
         "current_plan": {
 
@@ -986,6 +1285,10 @@ def simulate_farmer_what_if(
                 current_totals
         },
 
+
+        # ====================================================
+        # SIMULATED PLAN
+        # ====================================================
 
         "simulated_plan": {
 
@@ -1020,19 +1323,6 @@ def simulate_farmer_what_if(
         "profit_difference":
             return_difference,
 
-
         "profit_change_percent":
-            (
-                round(
-                    (
-                        return_difference
-                        / current_return
-                    )
-                    * 100,
-                    2
-                )
-                if current_return != 0
-                else 0.0
-            )
-
+            profit_change_percent
     }

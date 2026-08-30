@@ -726,3 +726,110 @@ export async function getMarketMap(
 
   return await response.json();
 }
+
+/* =========================================================
+   BUYER PORTAL
+========================================================= */
+
+export async function getBuyers() {
+  const response = await fetch(
+    `${API_BASE_URL}/buyers/`
+  );
+
+  if (!response.ok) {
+    const errorData =
+      await response
+        .json()
+        .catch(() => null);
+
+    throw new Error(
+      errorData?.detail ||
+      `Buyer list request failed: ${response.status}`
+    );
+  }
+
+  return await response.json();
+}
+
+
+/* =========================================================
+   AVAILABLE HARVESTS FOR BUYERS
+========================================================= */
+
+export async function getAvailableBuyerHarvests() {
+  const response = await fetch(
+    `${API_BASE_URL}/buyers/available-harvests`
+  );
+
+  if (!response.ok) {
+    const errorData =
+      await response
+        .json()
+        .catch(() => null);
+
+    throw new Error(
+      errorData?.detail ||
+      `Available harvest request failed: ${response.status}`
+    );
+  }
+
+  return await response.json();
+}
+
+
+/* =========================================================
+   CREATE BUYER OFFER
+========================================================= */
+
+export async function createBuyerOffer(
+  offerData
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/buyers/offers`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        buyer_id:
+          Number(
+            offerData.buyer_id
+          ),
+
+        harvest_id:
+          Number(
+            offerData.harvest_id
+          ),
+
+        offered_price_per_kg:
+          Number(
+            offerData.offered_price_per_kg
+          ),
+
+        quantity_kg:
+          Number(
+            offerData.quantity_kg
+          )
+      })
+    }
+  );
+
+
+  if (!response.ok) {
+    const errorData =
+      await response
+        .json()
+        .catch(() => null);
+
+    throw new Error(
+      errorData?.detail ||
+      `Buyer offer creation failed: ${response.status}`
+    );
+  }
+
+
+  return await response.json();
+}

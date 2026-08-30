@@ -9,6 +9,7 @@ import {
   getMarketRecommendation,
   CURRENT_FARMER_ID
 } from "../services/api";
+
 import "./Dashboard.css";
 
 
@@ -57,6 +58,13 @@ function Dashboard() {
   const [storageFacility, setStorageFacility] =
     useState("Available");
 
+  /*
+    NEW:
+    Farmer-entered physical storage capacity.
+  */
+  const [storageCapacity, setStorageCapacity] =
+    useState("");
+
   const [riskPreference, setRiskPreference] =
     useState("MEDIUM");
 
@@ -81,144 +89,290 @@ function Dashboard() {
 
   useEffect(() => {
 
-  async function loadDashboard() {
+    async function loadDashboard() {
 
-    try {
+      try {
 
-      setLoading(true);
-      setError("");
-
-      const [
-        dashboardResult,
-        farmerResult
-      ] = await Promise.all([
-
-        getFarmerDashboard(
-          CURRENT_FARMER_ID
-        ),
-
-        getFarmer(
-          CURRENT_FARMER_ID
-        )
-
-      ]);
+        setLoading(true);
+        setError("");
 
 
-      setData(
-        dashboardResult
-      );
+        const [
+          dashboardResult,
+          farmerResult
+        ] = await Promise.all([
+
+          getFarmerDashboard(
+            CURRENT_FARMER_ID
+          ),
+
+          getFarmer(
+            CURRENT_FARMER_ID
+          )
+
+        ]);
 
 
-      /* -----------------------------------------------
-         PREFILL FROM CURRENT HARVEST
-      ------------------------------------------------ */
-
-      const currentHarvest =
-        dashboardResult?.harvest;
-
-
-      if (currentHarvest) {
-
-        setCrop(
-          currentHarvest.crop ||
-          "Tomato"
+        setData(
+          dashboardResult
         );
 
-        setVariety(
-          currentHarvest.variety ||
-          "Deshi"
-        );
 
-        setQuantity(
-          String(
-            currentHarvest.quantity_kg ??
+        /* -----------------------------------------------
+           PREFILL FROM CURRENT HARVEST
+        ------------------------------------------------ */
+
+        const currentHarvest =
+          dashboardResult?.harvest;
+
+
+        if (currentHarvest) {
+
+          setCrop(
+            currentHarvest.crop ||
+            "Tomato"
+          );
+
+
+          setVariety(
+            currentHarvest.variety ||
+            "Deshi"
+          );
+
+
+          setQuantity(
+            String(
+              currentHarvest.quantity_kg ?? ""
+            )
+          );
+
+
+          setQuality(
+            currentHarvest.quality ||
+            "Grade A"
+          );
+
+
+          setHarvestDate(
+            currentHarvest.harvest_date ||
             ""
-          )
+          );
+
+        }
+
+
+        /* -----------------------------------------------
+           FARMER PROFILE
+        ------------------------------------------------ */
+
+        if (farmerResult) {
+
+          setLocation(
+            farmerResult.location ||
+            "Dindigul, Tamil Nadu"
+          );
+
+
+          setRiskPreference(
+            farmerResult.risk_preference ||
+            "MEDIUM"
+          );
+
+
+          /*
+            NEW:
+            Load the farmer's existing storage capacity.
+          */
+
+          const farmerCapacity =
+            Number(
+              farmerResult.storage_capacity_kg
+              ?? 0
+            );
+
+
+          setStorageCapacity(
+            farmerCapacity > 0
+              ? String(farmerCapacity)
+              : ""
+          );
+
+
+          /*
+            If the farmer has no storage capacity,
+            treat storage facility as unavailable.
+          */
+
+          if (
+            farmerCapacity <= 0
+          ) {
+
+            setStorageFacility(
+              "Not Available"
+            );
+
+          } else {
+
+            setStorageFacility(
+              "Available"
+            );
+
+          }
+
+        }
+
+
+        /* -----------------------------------------------
+           DEFAULT DATE
+        ------------------------------------------------ */
+
+        if (
+          !currentHarvest?.harvest_date
+        ) {
+
+          const today =
+            new Date();
+
+
+          const localDate =
+            new Date(
+              today.getTime() -
+              today.getTimezoneOffset() *
+                60000
+            )
+              .toISOString()
+              .split("T")[0];
+
+
+          setHarvestDate(
+            localDate
+          );
+
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Dashboard loading error:",
+          err
         );
 
-        setQuality(
-          currentHarvest.quality ||
-          "Grade A"
+
+        setError(
+          err.message ||
+          "Unable to load dashboard data."
         );
 
-        setHarvestDate(
-          currentHarvest.harvest_date ||
-          ""
-        );
+      } finally {
+
+        setLoading(false);
 
       }
 
-
-      /* -----------------------------------------------
-         FARMER PROFILE
-      ------------------------------------------------ */
-
-      if (farmerResult) {
-
-        setLocation(
-          farmerResult.location ||
-          "Dindigul, Tamil Nadu"
-        );
+    }
 
 
-        setRiskPreference(
-          farmerResult.risk_preference ||
-          "MEDIUM"
-        );
+    loadDashboard();
 
-      }
+  }, []);
 
 
-      /* -----------------------------------------------
-         DEFAULT DATE
-      ------------------------------------------------ */
+  /* =======================================================
+     STORAGE FACILITY CHANGE
+  ======================================================= */
 
-      if (
-        !currentHarvest?.harvest_date
-      ) {
+  function handleStorageFacilityChange(
+    event
+  ) {
 
-        const today =
-          new Date();
+    const value =
+      event.target.value;
 
-        const localDate =
-          new Date(
-            today.getTime() -
-            today.getTimezoneOffset() *
-              60000
-          )
-            .toISOString()
-            .split("T")[0];
 
-        setHarvestDate(
-          localDate
-        );
+    setStorageFacility(
+      value
+    );
 
-      }
 
-    } catch (err) {
+    /*
+      When storage is unavailable,
+      capacity must be zero/empty.
+    */
 
-      console.error(
-        "Dashboard loading error:",
-        err
+    if (
+      value === "Not Available"
+    ) {
+
+      setStorageCapacity(
+        ""
       );
-
-      setError(
-        err.message ||
-        "Unable to load dashboard data."
-      );
-
-    } finally {
-
-      setLoading(false);
 
     }
 
   }
 
 
-  loadDashboard();
+  /* =======================================================
+     STORAGE CAPACITY CHANGE
+  ======================================================= */
 
-}, []);
+  function handleStorageCapacityChange(
+    event
+  ) {
+
+    const value =
+      event.target.value;
+
+
+    /*
+      Allow the user to temporarily
+      clear the field while typing.
+    */
+
+    if (value === "") {
+
+      setStorageCapacity(
+        ""
+      );
+
+      return;
+
+    }
+
+
+    const numericValue =
+      Number(value);
+
+
+    if (
+      !Number.isFinite(
+        numericValue
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+      Never allow negative capacity.
+    */
+
+    if (
+      numericValue < 0
+    ) {
+
+      return;
+
+    }
+
+
+    setStorageCapacity(
+      value
+    );
+
+  }
 
 
   /* =======================================================
@@ -226,243 +380,288 @@ function Dashboard() {
   ======================================================= */
 
   async function handleAnalyzeMarket(
-  event
-) {
-
-  event.preventDefault();
-
-  setAnalysisError("");
-
-
-  const quantityNumber =
-    Number(quantity);
-
-
-  /* =====================================================
-     VALIDATION
-  ===================================================== */
-
-  if (!crop.trim()) {
-
-    setAnalysisError(
-      "Please select a crop."
-    );
-
-    return;
-
-  }
-
-
-  if (!variety.trim()) {
-
-    setAnalysisError(
-      "Please select a variety."
-    );
-
-    return;
-
-  }
-
-
-  if (
-    !Number.isFinite(
-      quantityNumber
-    ) ||
-    quantityNumber <= 0
+    event
   ) {
 
-    setAnalysisError(
-      "Please enter a valid quantity."
-    );
-
-    return;
-
-  }
+    event.preventDefault();
 
 
-  if (!harvestDate) {
-
-    setAnalysisError(
-      "Please select the harvest date."
-    );
-
-    return;
-
-  }
+    setAnalysisError("");
 
 
-  try {
+    const quantityNumber =
+      Number(quantity);
 
-    setAnalyzing(true);
 
-
-    /* ===================================================
-       GET CURRENT FARMER
-    =================================================== */
-
-    const farmer =
-      await getFarmer(
-        CURRENT_FARMER_ID
+    const storageCapacityNumber =
+      Number(
+        storageCapacity
       );
 
 
-    /* ===================================================
-       SAVE FARMER PREFERENCES
-    =================================================== */
+    /* =====================================================
+       VALIDATION
+    ===================================================== */
 
-    await updateFarmer(
+    if (!crop.trim()) {
 
-      CURRENT_FARMER_ID,
+      setAnalysisError(
+        "Please select a crop."
+      );
 
-      {
-
-        name:
-          farmer.name,
-
-        location:
-          location,
-
-        risk_preference:
-          riskPreference,
-
-        /*
-          Keep the existing numeric storage
-          capacity. The "Storage Facility"
-          dropdown represents availability,
-          not capacity.
-        */
-
-        storage_capacity_kg:
-          Number(
-            farmer.storage_capacity_kg || 0
-          )
-
-      }
-
-    );
-
-
-    /* ===================================================
-       CHECK EXISTING HARVEST
-    =================================================== */
-
-    const existingHarvest =
-      data?.harvest || null;
-
-
-    let selectedHarvest =
-      existingHarvest;
-
-
-    const harvestChanged =
-      !existingHarvest ||
-      existingHarvest.crop !== crop ||
-      (
-        existingHarvest.variety ||
-        ""
-      ) !== variety ||
-      Number(
-        existingHarvest.quantity_kg || 0
-      ) !== quantityNumber ||
-      (
-        existingHarvest.quality ||
-        ""
-      ) !== quality ||
-      (
-        existingHarvest.harvest_date ||
-        ""
-      ) !== harvestDate;
-
-
-    /* ===================================================
-       CREATE NEW HARVEST ONLY WHEN NEEDED
-    =================================================== */
-
-    if (harvestChanged) {
-
-      selectedHarvest =
-        await createHarvest({
-
-          farmer_id:
-            CURRENT_FARMER_ID,
-
-          crop:
-            crop,
-
-          variety:
-            variety,
-
-          quantity_kg:
-            quantityNumber,
-
-          quality:
-            quality,
-
-          harvest_date:
-            harvestDate,
-
-          /*
-            Default shelf life for the
-            dashboard-entered harvest.
-          */
-
-          shelf_life_days:
-            5
-
-        });
+      return;
 
     }
 
 
-    /* ===================================================
-       MARKET ANALYSIS
-    =================================================== */
+    if (!variety.trim()) {
 
-    const recommendation =
-      await getMarketRecommendation(
+      setAnalysisError(
+        "Please select a variety."
+      );
 
-        crop,
+      return;
 
-        variety,
+    }
 
+
+    if (
+      !Number.isFinite(
         quantityNumber
+      ) ||
+      quantityNumber <= 0
+    ) {
+
+      setAnalysisError(
+        "Please enter a valid quantity."
+      );
+
+      return;
+
+    }
+
+
+    if (!harvestDate) {
+
+      setAnalysisError(
+        "Please select the harvest date."
+      );
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       STORAGE VALIDATION
+    ===================================================== */
+
+    if (
+      storageFacility === "Available"
+    ) {
+
+      if (
+        !Number.isFinite(
+          storageCapacityNumber
+        ) ||
+        storageCapacityNumber <= 0
+      ) {
+
+        setAnalysisError(
+          "Please enter your available storage capacity."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        storageCapacityNumber >
+        quantityNumber
+      ) {
+
+        setAnalysisError(
+          "Storage capacity cannot exceed the harvest quantity."
+        );
+
+        return;
+
+      }
+
+    }
+
+
+    try {
+
+      setAnalyzing(true);
+
+
+      /* ===================================================
+         GET CURRENT FARMER
+      =================================================== */
+
+      const farmer =
+        await getFarmer(
+          CURRENT_FARMER_ID
+        );
+
+
+      /* ===================================================
+         DETERMINE STORAGE CAPACITY TO SAVE
+      =================================================== */
+
+      const capacityToSave =
+        storageFacility === "Available"
+          ? storageCapacityNumber
+          : 0;
+
+
+      /* ===================================================
+         SAVE FARMER PROFILE
+      =================================================== */
+
+      await updateFarmer(
+
+        CURRENT_FARMER_ID,
+
+        {
+
+          name:
+            farmer.name,
+
+          location:
+            location,
+
+          risk_preference:
+            riskPreference,
+
+          storage_capacity_kg:
+            capacityToSave
+
+        }
 
       );
 
 
-    setAnalysisResult(
-      recommendation
-    );
+      /* ===================================================
+         CHECK EXISTING HARVEST
+      =================================================== */
+
+      const existingHarvest =
+        data?.harvest || null;
 
 
-    /* ===================================================
-       GO TO SELECTED HARVEST
-    =================================================== */
-
-    navigate(
-      `/harvest-planner?harvest_id=${selectedHarvest.id}`
-    );
+      let selectedHarvest =
+        existingHarvest;
 
 
-  } catch (err) {
+      const harvestChanged =
+        !existingHarvest ||
+        existingHarvest.crop !== crop ||
+        (
+          existingHarvest.variety ||
+          ""
+        ) !== variety ||
+        Number(
+          existingHarvest.quantity_kg ||
+          0
+        ) !== quantityNumber ||
+        (
+          existingHarvest.quality ||
+          ""
+        ) !== quality ||
+        (
+          existingHarvest.harvest_date ||
+          ""
+        ) !== harvestDate;
 
-    console.error(
-      "Market analysis error:",
-      err
-    );
 
-    setAnalysisError(
-      err.message ||
-      "Unable to save harvest and analyze the market."
-    );
+      /* ===================================================
+         CREATE NEW HARVEST ONLY WHEN NEEDED
+      =================================================== */
 
-  } finally {
+      if (harvestChanged) {
 
-    setAnalyzing(false);
+        selectedHarvest =
+          await createHarvest({
+
+            farmer_id:
+              CURRENT_FARMER_ID,
+
+            crop:
+              crop,
+
+            variety:
+              variety,
+
+            quantity_kg:
+              quantityNumber,
+
+            quality:
+              quality,
+
+            harvest_date:
+              harvestDate,
+
+            shelf_life_days:
+              5
+
+          });
+
+      }
+
+
+      /* ===================================================
+         MARKET ANALYSIS
+      =================================================== */
+
+      const recommendation =
+        await getMarketRecommendation(
+
+          crop,
+
+          variety,
+
+          quantityNumber
+
+        );
+
+
+      setAnalysisResult(
+        recommendation
+      );
+
+
+      /* ===================================================
+         GO TO SELECTED HARVEST
+      =================================================== */
+
+      navigate(
+        `/harvest-planner?harvest_id=${selectedHarvest.id}`
+      );
+
+
+    } catch (err) {
+
+      console.error(
+        "Market analysis error:",
+        err
+      );
+
+
+      setAnalysisError(
+        err.message ||
+        "Unable to save harvest and analyze the market."
+      );
+
+    } finally {
+
+      setAnalyzing(false);
+
+    }
 
   }
-
-}
 
 
   /* =======================================================
@@ -541,7 +740,9 @@ function Dashboard() {
   ======================================================= */
 
   const quantityNumber =
-    Number(quantity || 0);
+    Number(
+      quantity || 0
+    );
 
 
   const summaryCrop =
@@ -552,6 +753,15 @@ function Dashboard() {
     quantityNumber > 0
       ? `${quantityNumber.toLocaleString()} kg`
       : "-";
+
+
+  const summaryStorageCapacity =
+    storageFacility === "Available" &&
+    Number(storageCapacity) > 0
+      ? `${Number(
+          storageCapacity
+        ).toLocaleString()} kg`
+      : "Not available";
 
 
   /* =======================================================
@@ -610,6 +820,7 @@ function Dashboard() {
               1
             </div>
 
+
             <div>
 
               <h2>
@@ -622,6 +833,7 @@ function Dashboard() {
               </p>
 
             </div>
+
 
             <div className="input-card-icon">
               👨‍🌾
@@ -642,13 +854,15 @@ function Dashboard() {
 
 
             {/* =========================================
-                ROW 1
+                INPUT GRID
             ========================================= */}
 
             <div className="input-form-grid">
 
 
-              {/* Crop */}
+              {/* -----------------------------------------
+                  CROP
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -674,7 +888,9 @@ function Dashboard() {
               </div>
 
 
-              {/* Quantity */}
+              {/* -----------------------------------------
+                  QUANTITY
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -706,9 +922,9 @@ function Dashboard() {
               </div>
 
 
-              {/* =======================================
+              {/* -----------------------------------------
                   VARIETY
-              ======================================== */}
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -743,13 +959,13 @@ function Dashboard() {
 
 
               {/* =======================================
-                  LOCATION
+              DISTRICT
               ======================================== */}
 
               <div className="form-field">
 
                 <label>
-                  Location <span>*</span>
+                  District <span>*</span>
                 </label>
 
                 <select
@@ -761,26 +977,69 @@ function Dashboard() {
                   }
                 >
 
-                  <option value="Dindigul, Tamil Nadu">
-                    📍 Dindigul, Tamil Nadu
-                  </option>
+                <option value="Salem, Tamil Nadu">
+                  📍 Salem
+                </option>
 
-                  <option value="Madurai, Tamil Nadu">
-                    📍 Madurai, Tamil Nadu
-                  </option>
+                <option value="Dindigul, Tamil Nadu">
+                  📍 Dindigul
+                </option>
 
-                  <option value="Salem, Tamil Nadu">
-                    📍 Salem, Tamil Nadu
-                  </option>
+                <option value="Madurai, Tamil Nadu">
+                  📍 Madurai
+                </option>
 
-                </select>
+                <option value="Coimbatore, Tamil Nadu">
+                  📍 Coimbatore
+                </option>
 
-              </div>
+                <option value="Erode, Tamil Nadu">
+                  📍 Erode
+                </option>
 
+                <option value="Namakkal, Tamil Nadu">
+                  📍 Namakkal
+                </option>
 
-              {/* =======================================
+                <option value="Karur, Tamil Nadu">
+                  📍 Karur
+                </option>
+
+                <option value="Theni, Tamil Nadu">
+                  📍 Theni
+                </option>
+
+                <option value="Dharmapuri, Tamil Nadu">
+                  📍 Dharmapuri
+                </option>
+
+                <option value="Krishnagiri, Tamil Nadu">
+                  📍 Krishnagiri
+                </option>
+
+                <option value="Tiruchirappalli, Tamil Nadu">
+                  📍 Tiruchirappalli
+                </option>
+
+                <option value="Thanjavur, Tamil Nadu">
+                  📍 Thanjavur
+                </option>
+
+                <option value="Virudhunagar, Tamil Nadu">
+                  📍 Virudhunagar
+                </option>
+
+                <option value="Cuddalore, Tamil Nadu">
+                  📍 Cuddalore
+                </option>
+
+              </select>
+
+            </div>
+
+              {/* -----------------------------------------
                   HARVEST DATE
-              ======================================== */}
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -802,9 +1061,9 @@ function Dashboard() {
               </div>
 
 
-              {/* =======================================
+              {/* -----------------------------------------
                   QUALITY
-              ======================================== */}
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -838,9 +1097,9 @@ function Dashboard() {
               </div>
 
 
-              {/* =======================================
-                  STORAGE
-              ======================================== */}
+              {/* -----------------------------------------
+                  STORAGE FACILITY
+              ----------------------------------------- */}
 
               <div className="form-field">
 
@@ -850,10 +1109,8 @@ function Dashboard() {
 
                 <select
                   value={storageFacility}
-                  onChange={(event) =>
-                    setStorageFacility(
-                      event.target.value
-                    )
+                  onChange={
+                    handleStorageFacilityChange
                   }
                 >
 
@@ -866,6 +1123,64 @@ function Dashboard() {
                   </option>
 
                 </select>
+
+              </div>
+
+
+              {/* -----------------------------------------
+                  STORAGE CAPACITY
+              ----------------------------------------- */}
+
+              <div className="form-field">
+
+                <label>
+                  Storage Capacity (kg)
+                </label>
+
+                <div className="input-with-suffix">
+
+                  <input
+                    type="number"
+                    min="0"
+                    max={
+                      quantityNumber > 0
+                        ? quantityNumber
+                        : undefined
+                    }
+                    step="1"
+                    value={storageCapacity}
+                    onChange={
+                      handleStorageCapacityChange
+                    }
+                    disabled={
+                      storageFacility ===
+                      "Not Available"
+                    }
+                    placeholder={
+                      storageFacility ===
+                      "Not Available"
+                        ? "No storage"
+                        : "Enter capacity"
+                    }
+                  />
+
+                  <span>
+                    kg
+                  </span>
+
+                </div>
+
+
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: "5px",
+                    color: "#52736b",
+                    fontSize: "11px"
+                  }}
+                >
+                  Maximum: harvest quantity
+                </small>
 
               </div>
 
@@ -1011,6 +1326,8 @@ function Dashboard() {
           <div className="summary-list">
 
 
+            {/* CROP */}
+
             <div className="summary-item">
 
               <span className="summary-item-icon">
@@ -1031,6 +1348,8 @@ function Dashboard() {
 
             </div>
 
+
+            {/* QUANTITY */}
 
             <div className="summary-item">
 
@@ -1053,6 +1372,8 @@ function Dashboard() {
             </div>
 
 
+            {/* LOCATION */}
+
             <div className="summary-item">
 
               <span className="summary-item-icon">
@@ -1073,6 +1394,8 @@ function Dashboard() {
 
             </div>
 
+
+            {/* HARVEST DATE */}
 
             <div className="summary-item">
 
@@ -1095,6 +1418,8 @@ function Dashboard() {
             </div>
 
 
+            {/* QUALITY */}
+
             <div className="summary-item">
 
               <span className="summary-item-icon">
@@ -1116,6 +1441,8 @@ function Dashboard() {
             </div>
 
 
+            {/* STORAGE */}
+
             <div className="summary-item">
 
               <span className="summary-item-icon">
@@ -1136,6 +1463,31 @@ function Dashboard() {
 
             </div>
 
+
+            {/* NEW: STORAGE CAPACITY */}
+
+            <div className="summary-item">
+
+              <span className="summary-item-icon">
+                📦
+              </span>
+
+              <div>
+
+                <span>
+                  Storage Capacity
+                </span>
+
+                <strong>
+                  {summaryStorageCapacity}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            {/* RISK */}
 
             <div className="summary-item">
 

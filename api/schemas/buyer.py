@@ -24,6 +24,23 @@ class BuyerResponse(BaseModel):
 
 
 # ============================================================
+# AVAILABLE HARVEST
+# ============================================================
+
+class BuyerHarvestResponse(BaseModel):
+    id: int
+    farmer_id: int
+    crop: str
+    variety: str | None = None
+    quantity_kg: float
+    quality: str | None = None
+    harvest_date: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================
 # BUYER OFFER
 # ============================================================
 

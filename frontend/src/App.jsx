@@ -20,6 +20,7 @@ import HelpSupport from "./pages/HelpSupport";
 import FairDeal from "./pages/FairDeal";
 import WhatIfSimulation from "./pages/WhatIfSimulation";
 import MapPage from "./pages/Map";
+import BuyerPortal from "./pages/BuyerPortal";
 
 import "./App.css";
 import "./pages/Dashboard.css";
@@ -199,6 +200,11 @@ function App() {
                 element={
                   <MapPage />
                 }
+            />
+
+            <Route
+              path="/buyer-portal"
+                element={<BuyerPortal />}
             />
 
           </Routes>

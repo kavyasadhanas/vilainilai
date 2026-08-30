@@ -14,11 +14,12 @@ from ML.digital_twin.farmer_state import FarmerState
 from ML.digital_twin.harvest_state import HarvestState
 
 from api.services.ml_service import (
-    predict_market_price
+    predict_market_price,
+    historical_features,
 )
 
 from optimization.optimizer import (
-    get_optimal_strategy
+    get_optimal_strategy,
 )
 
 
@@ -34,14 +35,160 @@ DEFAULT_STORAGE_DAYS = 2
 # ============================================================
 # DATABASE MARKET -> ML DATASET MARKET
 # ============================================================
+#
+# Explicit aliases are required only when the database display
+# name differs from Member 1's dataset market name.
+#
+# Example:
+#
+# Database:
+#   "Oddanchatram Market"
+#
+# Dataset:
+#   "Dindigul(Uzhavar Sandhai )"
+#
+# For all other markets, the application automatically tries
+# to match the database market name with Member 1's dataset.
+# ============================================================
 
 ML_MARKET_MAPPING = {
+
+    # --------------------------------------------------------
+    # Existing application-specific aliases
+    # --------------------------------------------------------
+
     "Oddanchatram Market":
         "Dindigul(Uzhavar Sandhai )",
 
     "Madurai Market":
         "Melur(Uzhavar Sandhai )",
 }
+
+
+# ============================================================
+# MARKET NAME NORMALIZATION
+# ============================================================
+
+def normalize_market_name(
+    name: str | None
+) -> str:
+    """
+    Normalize repeated/internal whitespace and surrounding
+    whitespace.
+
+    This helps match database names with Member 1 dataset
+    names when there are small formatting differences.
+    """
+
+    if not name:
+        return ""
+
+    return " ".join(
+        str(name)
+        .strip()
+        .split()
+    )
+
+
+# ============================================================
+# BUILD DATASET MARKET LOOKUP
+# ============================================================
+
+def build_dataset_market_lookup() -> dict[str, str]:
+    """
+    Build a normalized lookup from Member 1's processed
+    forecasting dataset.
+
+    Example:
+
+        "Attayampatti(Uzhavar Sandhai )"
+            ->
+        "Attayampatti(Uzhavar Sandhai )"
+
+    The normalized form is used as the key while the original
+    dataset value is returned to the ML model.
+    """
+
+    lookup = {}
+
+    if historical_features.empty:
+        return lookup
+
+    dataset_markets = (
+        historical_features["Market"]
+        .dropna()
+        .astype(str)
+        .unique()
+    )
+
+    for dataset_market in dataset_markets:
+
+        normalized = normalize_market_name(
+            dataset_market
+        )
+
+        if normalized:
+            lookup[
+                normalized
+            ] = dataset_market
+
+    return lookup
+
+
+# Build once when the service module is loaded.
+DATASET_MARKET_LOOKUP = (
+    build_dataset_market_lookup()
+)
+
+
+# ============================================================
+# RESOLVE DATABASE MARKET -> ML MARKET
+# ============================================================
+
+def get_ml_market_name(
+    market_name: str
+) -> str | None:
+    """
+    Resolve a database Market.name to the exact market name
+    expected by Member 1's ML forecasting data.
+
+    Priority:
+
+        1. Explicit alias
+        2. Exact normalized dataset match
+        3. No match -> None
+    """
+
+    if not market_name:
+        return None
+
+    # --------------------------------------------------------
+    # 1. Explicit application alias
+    # --------------------------------------------------------
+
+    explicit_mapping = (
+        ML_MARKET_MAPPING.get(
+            market_name
+        )
+    )
+
+    if explicit_mapping:
+        return explicit_mapping
+
+
+    # --------------------------------------------------------
+    # 2. Automatic dataset match
+    # --------------------------------------------------------
+
+    normalized_name = (
+        normalize_market_name(
+            market_name
+        )
+    )
+
+    return DATASET_MARKET_LOOKUP.get(
+        normalized_name
+    )
 
 
 # ============================================================
@@ -155,18 +302,24 @@ def build_market_price_list(
     quantity_kg: float,
 ):
     """
-    Build market inputs for the optimization engine.
+    Build all valid market destinations for the optimizer.
 
-    Current market price comes from the XGBoost forecasting model.
+    A market is included only when:
 
-    MarketCost values are preserved.
+        1. It exists in the database.
+        2. It has a MarketCost record.
+        3. It can be resolved to Member 1's dataset market.
+        4. The ML model successfully predicts its price.
 
-    expected_loss_per_kg is converted into a fraction because
-    DestinationOption expects expected_loss_pct.
+    This means the optimizer receives the same market universe
+    that the ML layer can actually evaluate.
     """
 
     markets = (
         db.query(Market)
+        .order_by(
+            Market.id
+        )
         .all()
     )
 
@@ -189,20 +342,32 @@ def build_market_price_list(
         )
 
         if not cost:
+
+            print(
+                f"[MARKET SKIP] "
+                f"{market.name}: "
+                f"no MarketCost record."
+            )
+
             continue
 
 
         # ----------------------------------------------------
-        # ML MARKET MAPPING
+        # RESOLVE ML MARKET
         # ----------------------------------------------------
 
-        ml_market = (
-            ML_MARKET_MAPPING.get(
-                market.name
-            )
+        ml_market = get_ml_market_name(
+            market.name
         )
 
         if not ml_market:
+
+            print(
+                f"[MARKET SKIP] "
+                f"{market.name}: "
+                f"not found in Member 1 dataset."
+            )
+
             continue
 
 
@@ -217,23 +382,86 @@ def build_market_price_list(
 
                     market=ml_market,
 
-                    district=market.district,
+                    district=(
+                        market.district
+                        or ""
+                    ),
 
-                    variety=variety,
+                    variety=(
+                        variety
+                        or "Deshi"
+                    ),
 
-                    arrival_quantity=quantity_kg
+                    arrival_quantity=(
+                        quantity_kg
+                    ),
                 )
             )
 
-        except ValueError:
+        except (
+            ValueError,
+            KeyError,
+            TypeError
+        ) as exc:
+
+            print(
+                f"[MARKET SKIP] "
+                f"{market.name}: "
+                f"ML prediction failed: {exc}"
+            )
+
+            continue
+
+
+        # ----------------------------------------------------
+        # VALIDATE PREDICTION
+        # ----------------------------------------------------
+
+        try:
+
+            predicted_price = float(
+                predicted_price
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            print(
+                f"[MARKET SKIP] "
+                f"{market.name}: "
+                f"invalid predicted price."
+            )
+
+            continue
+
+
+        if predicted_price <= 0:
+
+            print(
+                f"[MARKET SKIP] "
+                f"{market.name}: "
+                f"predicted price <= 0."
+            )
 
             continue
 
 
         # ----------------------------------------------------
         # EXPECTED LOSS
-        # Database stores absolute loss in ₹/kg.
+        # ----------------------------------------------------
+        #
+        # Database stores loss as ₹/kg.
         # DestinationOption expects a fraction.
+        #
+        # Example:
+        #
+        # loss = ₹0.30/kg
+        # price = ₹20/kg
+        #
+        # loss fraction = 0.30 / 20 = 0.015
+        #
         # ----------------------------------------------------
 
         loss_per_kg = float(
@@ -241,21 +469,14 @@ def build_market_price_list(
             or 0
         )
 
-
-        if predicted_price > 0:
-
-            expected_loss_pct = (
-                loss_per_kg
-                / float(predicted_price)
-            )
-
-        else:
-
-            expected_loss_pct = 0.0
+        expected_loss_pct = (
+            loss_per_kg
+            / predicted_price
+        )
 
 
         # ----------------------------------------------------
-        # MARKET OPTION INPUT
+        # ADD MARKET OPTION
         # ----------------------------------------------------
 
         market_price_list.append({
@@ -266,10 +487,17 @@ def build_market_price_list(
             "name":
                 market.name,
 
+            "dataset_market":
+                ml_market,
+
+            "district":
+                market.district,
+
             "price_per_kg":
-                float(
-                    predicted_price
-                ),
+                predicted_price,
+
+            "predicted_price_per_kg":
+                predicted_price,
 
             "transport_cost_per_kg":
                 float(
@@ -286,11 +514,6 @@ def build_market_price_list(
             "expected_loss_per_kg":
                 float(
                     expected_loss_pct
-                ),
-
-            "predicted_price_per_kg":
-                float(
-                    predicted_price
                 ),
         })
 
@@ -316,6 +539,9 @@ def build_buyer_offer_list(
         .filter(
             BuyerOffer.status
             == "PENDING"
+        )
+        .order_by(
+            BuyerOffer.created_at.desc()
         )
         .all()
     )
@@ -357,26 +583,30 @@ def build_future_storage_price(
     days_to_wait: int
 ):
     """
-    Predict the market price after the waiting period.
+    Predict the price after the waiting period.
 
-    The selected market is used as the reference market.
+    The selected market is resolved through the same market
+    resolution system used by current market prediction.
     """
 
-    ml_market = (
-        ML_MARKET_MAPPING.get(
-            market.name
-        )
+    ml_market = get_ml_market_name(
+        market.name
     )
 
+
     if not ml_market:
+
         return None
 
 
     if not harvest.harvest_date:
+
         return None
 
 
-    base_date = harvest.harvest_date
+    base_date = (
+        harvest.harvest_date
+    )
 
 
     future_date = (
@@ -394,24 +624,47 @@ def build_future_storage_price(
 
                 market=ml_market,
 
-                district=market.district,
+                district=(
+                    market.district
+                    or ""
+                ),
 
-                variety=variety,
+                variety=(
+                    variety
+                    or "Deshi"
+                ),
 
-                arrival_quantity=quantity_kg,
+                arrival_quantity=(
+                    quantity_kg
+                ),
 
-                prediction_date=future_date
+                prediction_date=(
+                    future_date
+                )
             )
         )
 
-    except ValueError:
+    except (
+        ValueError,
+        KeyError,
+        TypeError
+    ):
 
         return None
 
 
-    return float(
-        future_price
-    )
+    try:
+
+        return float(
+            future_price
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return None
 
 
 # ============================================================
@@ -430,12 +683,15 @@ def get_farmer_optimal_strategy(
     farmer = (
         db.query(Farmer)
         .filter(
-            Farmer.id == farmer_id
+            Farmer.id
+            == farmer_id
         )
         .first()
     )
 
+
     if not farmer:
+
         return None
 
 
@@ -455,7 +711,9 @@ def get_farmer_optimal_strategy(
         .first()
     )
 
+
     if not harvest:
+
         return None
 
 
@@ -469,6 +727,7 @@ def get_farmer_optimal_strategy(
         )
     )
 
+
     harvest_state = (
         build_harvest_state(
             farmer,
@@ -478,7 +737,7 @@ def get_farmer_optimal_strategy(
 
 
     # ========================================================
-    # BUILD MARKET INPUTS
+    # BUILD ML MARKET INPUTS
     # ========================================================
 
     market_price_list = (
@@ -518,7 +777,9 @@ def get_farmer_optimal_strategy(
 
     expected_future_price_per_kg = None
 
-    days_to_wait = DEFAULT_STORAGE_DAYS
+    days_to_wait = (
+        DEFAULT_STORAGE_DAYS
+    )
 
 
     # ========================================================
@@ -532,8 +793,10 @@ def get_farmer_optimal_strategy(
 
     if market_price_list:
 
-        # Use the market with the highest CURRENT predicted
-        # price as the reference market for storage.
+        # ----------------------------------------------------
+        # Highest current predicted market price becomes the
+        # reference market for storage forecasting.
+        # ----------------------------------------------------
 
         best_market_input = max(
 
@@ -572,7 +835,7 @@ def get_farmer_optimal_strategy(
 
 
     # ========================================================
-    # PREDICT FUTURE PRICE
+    # PREDICT FUTURE STORAGE PRICE
     # ========================================================
 
     if reference_market:
@@ -611,30 +874,42 @@ def get_farmer_optimal_strategy(
 
     if reference_market_cost:
 
-        future_transport_cost_per_kg = float(
-            reference_market_cost.transport_cost_per_kg
-            or 0
+        future_transport_cost_per_kg = (
+            float(
+                reference_market_cost
+                    .transport_cost_per_kg
+                or 0
+            )
         )
 
-        future_commission_per_kg = float(
-            reference_market_cost.commission_per_kg
-            or 0
+
+        future_commission_per_kg = (
+            float(
+                reference_market_cost
+                    .commission_per_kg
+                or 0
+            )
         )
 
 
         if (
-            expected_future_price_per_kg is not None
-            and expected_future_price_per_kg > 0
+            expected_future_price_per_kg
+            is not None
+            and
+            expected_future_price_per_kg > 0
         ):
 
             future_loss_per_kg = float(
-                reference_market_cost.expected_loss_per_kg
+                reference_market_cost
+                    .expected_loss_per_kg
                 or 0
             )
 
+
             future_expected_loss_pct = (
                 future_loss_per_kg
-                / float(
+                /
+                float(
                     expected_future_price_per_kg
                 )
             )
@@ -689,8 +964,10 @@ def get_farmer_optimal_strategy(
     result["storage"] = {
 
         "enabled":
-            expected_future_price_per_kg
-            is not None,
+            (
+                expected_future_price_per_kg
+                is not None
+            ),
 
         "days_to_wait":
             days_to_wait,
@@ -707,17 +984,53 @@ def get_farmer_optimal_strategy(
                     expected_future_price_per_kg,
                     2
                 )
-                if expected_future_price_per_kg
+
+                if
+                expected_future_price_per_kg
                 is not None
+
                 else None
             ),
 
         "reference_market":
             (
                 reference_market.name
+
                 if reference_market
+
                 else None
-            )
+            ),
+    }
+
+
+    # ========================================================
+    # ADD MARKET SUMMARY
+    # ========================================================
+    #
+    # Useful for frontend debugging and for showing which
+    # markets actually participated in the optimization.
+    # ========================================================
+
+    result["market_summary"] = {
+
+        "markets_considered":
+            len(
+                market_price_list
+            ),
+
+        "market_names":
+            [
+                item["name"]
+                for item
+                in market_price_list
+            ],
+
+        "dataset_market_names":
+            [
+                item["dataset_market"]
+                for item
+                in market_price_list
+            ],
     }
 
 

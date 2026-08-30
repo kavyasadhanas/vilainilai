@@ -193,6 +193,7 @@ function WhatIfSimulation() {
           err
         );
 
+
         setError(
           err.message ||
           "Unable to load harvest and farmer data."
@@ -298,7 +299,6 @@ function WhatIfSimulation() {
           CURRENT_FARMER_ID,
 
           {
-
             harvest_id:
               harvest.id,
 
@@ -319,7 +319,6 @@ function WhatIfSimulation() {
               Number(
                 spoilageRisk
               )
-
           }
 
         );
@@ -336,6 +335,7 @@ function WhatIfSimulation() {
         "What-if simulation error:",
         err
       );
+
 
       setError(
         err.message ||
@@ -997,6 +997,7 @@ function WhatIfSimulation() {
 
               </div>
 
+
             </div>
 
           </section>
@@ -1044,10 +1045,17 @@ function WhatIfSimulation() {
                     }
                   >
 
+                    {/* =================================
+                        DESTINATION NAME
+                    ================================= */}
+
                     <div>
 
                       <strong>
-                        {detail.destination_id}
+                        {
+                          detail.destination_name ||
+                          detail.destination_id
+                        }
                       </strong>
 
                       <span>
@@ -1057,6 +1065,10 @@ function WhatIfSimulation() {
                     </div>
 
 
+                    {/* =================================
+                        QUANTITY / PRICE
+                    ================================= */}
+
                     <div>
 
                       <strong>
@@ -1064,6 +1076,7 @@ function WhatIfSimulation() {
                         {Number(
                           detail.allocated_kg || 0
                         ).toLocaleString()}
+
                         {" "}kg
 
                       </strong>
@@ -1074,12 +1087,17 @@ function WhatIfSimulation() {
                         {Number(
                           detail.risk_adjusted_price_per_kg || 0
                         ).toFixed(2)}
+
                         /kg
 
                       </span>
 
                     </div>
 
+
+                    {/* =================================
+                        EXPECTED RETURN
+                    ================================= */}
 
                     <div>
 
